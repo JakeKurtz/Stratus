@@ -1,6 +1,5 @@
 # Draws an off-screen buffer and display it in the corner of the view.
 import bpy
-import bgl
 import gpu
 
 import mathutils
@@ -23,6 +22,9 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        )
 
+update_hrdi = False
+editing_prop = False
+
 def update_viewers(context):
     if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
         wman = bpy.data.window_managers['WinMan']
@@ -34,22 +36,20 @@ def update_viewers(context):
                             space.shading.type = 'SOLID'
                             space.shading.type = 'RENDERED'
 
-update_hrdi = False
-frame_done = False
+    x = context.scene.render.resolution_percentage
+    context.scene.render.resolution_percentage = x                          
 
 def update_prop(self, value):
-    
+
+    global editing_prop
     global update_hrdi
-    
-    if not self.is_dragging:
-        print("Beginning dragging the slider !")
-        self.is_dragging = True
+
+    if not editing_prop:
+        editing_prop = True
         update_hrdi = True
-        bpy.ops.draggableprop.subscribe('INVOKE_DEFAULT')
-
+        bpy.ops.stratus.prop_observer('INVOKE_DEFAULT')
+    
 class Properties(PropertyGroup):
-
-    is_dragging: bpy.props.BoolProperty()
 
     object_color: FloatVectorProperty(  
        name="object_color",
@@ -352,8 +352,6 @@ def cloud_uniforms(self, context, shader):
     mytool = scene.my_tool
     
     shader.uniform_float("time", mytool.prop_cld_center)
-    #shader.uniform_float("density_offset", mytool.density_offset)
-    
     shader.uniform_float("attinuation_clamp", 1)
     
     shader.uniform_float("planet_center", (0,0,-6378150 - mytool.prop_sky_altitude))
@@ -369,8 +367,6 @@ def cloud_uniforms(self, context, shader):
     shader.uniform_float("mie_intensity", mytool.prop_dust)
     shader.uniform_float("absorption_intensity", mytool.prop_ozone)
     
-    #shader.uniform_float("cld_radius", 6378137)
-    #shader.uniform_float("cld_center", (0.0, 0.0, -6378150+2000))
     shader.uniform_float("cld_radius", 6000 + 1000000)
     shader.uniform_float("cld_center", (0.0, 0.0, -1002000))
     shader.uniform_float("cld_thickness", mytool.prop_cld_thickness)
@@ -412,37 +408,15 @@ def cloud_uniforms(self, context, shader):
     shader.uniform_sampler("noise_tex_2D_1024", self.tex_noise_1024_2D)
     shader.uniform_sampler("blue_noise", self.tex_noise_blue_2D)
     
-    '''
-    bgl.glActiveTexture(bgl.GL_TEXTURE0);
-    bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[0]);
-    shader.uniform_int("noise_tex_3D_32", 0);
-
-    bgl.glActiveTexture(bgl.GL_TEXTURE1);
-    bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[1]);
-    shader.uniform_int("noise_tex_3D_128", 1);
-       
-    bgl.glActiveTexture(bgl.GL_TEXTURE2);
-    bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[2]);
-    shader.uniform_int("noise_tex_2D_1024", 2);
-    
-    bgl.glActiveTexture(bgl.GL_TEXTURE3);
-    bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[3]);
-    shader.uniform_int("blue_noise", 3);
-    '''
-    
-
-class OffScreenDraw(bpy.types.Operator):
-    bl_idname = "view3d.offscreen_draw"
-    bl_label = "View3D Offscreen Draw"
+class STRATUS_OT_viewport_editor(bpy.types.Operator):
+    bl_idname = "stratus.viewport_editor"
+    bl_label = "Stratus Viewport Editor"
 
     img_name = "STRATUS_ENV_TEX"
-    img_width = 512#1024 * 2
-    img_height = 256#512 * 2
+    img_width = 256#1024 * 2
+    img_height = 128#512 * 2
 
     offscreen = None
-    fbo = None
-
-    tex_ids = None
     
     tex_noise_32_3D = None
     tex_noise_128_3D = None
@@ -455,8 +429,7 @@ class OffScreenDraw(bpy.types.Operator):
     shader_viewport = None
     batch_viewport = None
 
-    _handle_calc = None
-    _handle_draw = None
+    handle_draw = None
     
     is_enabled = False
 
@@ -471,17 +444,17 @@ class OffScreenDraw(bpy.types.Operator):
 
     @staticmethod
     def handle_add(self, context):
-        OffScreenDraw._handle_draw = bpy.types.SpaceView3D.draw_handler_add(
+        STRATUS_OT_viewport_editor.handle_draw = bpy.types.SpaceView3D.draw_handler_add(
                 self.draw_callback, (self, context),
                 'WINDOW', 'POST_VIEW',
                 )
 
     @staticmethod
     def handle_remove():
-        if OffScreenDraw._handle_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(OffScreenDraw._handle_draw, 'WINDOW')
+        if STRATUS_OT_viewport_editor.handle_draw is not None:
+            bpy.types.SpaceView3D.draw_handler_remove(STRATUS_OT_viewport_editor.handle_draw, 'WINDOW')
 
-        OffScreenDraw._handle_draw = None
+        STRATUS_OT_viewport_editor.handle_draw = None
 
     def init_world_node_tree(self):
         C = bpy.context
@@ -514,8 +487,6 @@ class OffScreenDraw(bpy.types.Operator):
         link = links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
 
     def init_textures(self):
-        self.tex_ids = bgl.Buffer(bgl.GL_INT, [4])
-        
         if self.img_name in bpy.data.images:
             bpy.data.images.remove(bpy.data.images[self.img_name])
             
@@ -527,120 +498,28 @@ class OffScreenDraw(bpy.types.Operator):
         img.filepath = 'C:/Users/jake/source/blender addons/clouds/STRATUS_ENV_TEX.exr'
         img.file_format = 'OPEN_EXR'
         
+        # Load 32x32x32 Inverse Worly noise tex
         img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
         img_buff = gpu.types.Buffer('FLOAT', 32**3 * 4, list(img.pixels[:]))
         self.tex_noise_32_3D = gpu.types.GPUTexture((32, 32, 32), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
         bpy.data.images.remove(img)
         
+        # Load 128 Inverse Worly noise tex
         img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
         img_buff = gpu.types.Buffer('FLOAT', 128**3 * 4, list(img.pixels[:]))
         self.tex_noise_128_3D = gpu.types.GPUTexture((128, 128, 128), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
         bpy.data.images.remove(img)
         
+        # Load 1024 coverage noise tex  
         img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
         self.tex_noise_1024_2D = gpu.texture.from_image(img)
         bpy.data.images.remove(img)
         
+        # Load 1024 coverage noise tex
         img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
         self.tex_noise_blue_2D = gpu.texture.from_image(img)
         bpy.data.images.remove(img)
         
-        
-        # Generate Textures
-        bgl.glGenTextures(4, self.tex_ids)
-
-        # Load 32x32x32 Inverse Worly noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
-        img.gl_load()
-        
-        buffer = bgl.Buffer(bgl.GL_FLOAT, (32**3) * 4)
-        
-        bgl.glActiveTexture(bgl.GL_TEXTURE0)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
-        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
-        
-        bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[0])
-        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA, 32, 32, 32, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-        
-        img.gl_free()
-        bpy.data.images.remove(img)
-        
-        # Load 128 Inverse Worly noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
-        img.gl_load()
-        
-        buffer = bgl.Buffer(bgl.GL_FLOAT, (128**3) * 4)
-        
-        bgl.glActiveTexture(bgl.GL_TEXTURE1)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
-        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
-        
-        bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[1])
-        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA, 128, 128, 128, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-                
-        img.gl_free()
-        bpy.data.images.remove(img)
-        
-        # Load 1024 coverage noise tex   
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
-        img.gl_load()
-        
-        buffer = bgl.Buffer(bgl.GL_FLOAT, (1024**2) * 4)
-        
-        bgl.glActiveTexture(bgl.GL_TEXTURE1)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
-        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
-        
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[2])
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, 1024, 1024, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
-
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-                
-        img.gl_free()
-        bpy.data.images.remove(img)
-        
-        # Load blue noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
-        img.gl_load()
-        
-        buffer = bgl.Buffer(bgl.GL_FLOAT, (128**2)*2)
-        
-        bgl.glActiveTexture(bgl.GL_TEXTURE0)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
-        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RED, bgl.GL_FLOAT, buffer)
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
-        
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[3])
-        
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-        
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_R16F, 128, 128, 0, bgl.GL_RED, bgl.GL_FLOAT, buffer)
-                
-        img.gl_free()
-        bpy.data.images.remove(img)
-        
-    
     def init_shaders(self):            
         coords = (
             (-1, +1, 0),
@@ -679,16 +558,9 @@ class OffScreenDraw(bpy.types.Operator):
         self.shader_viewport = gpu.types.GPUShader(vertex_shader, fragment_shader, )
         self.batch_viewport = batch_for_shader(self.shader_viewport, 'TRIS', {"position": coords}, indices=indices)
 
-    # off-screen buffer
     @staticmethod
     def _setup_offscreen(self, context):
         try:
-            
-            #color_tex = gpu.types.GPUTexture((self.img_width, self.img_height), layers=0, is_cubemap=False, format='RGBA32F')
-            #depth_tex = gpu.types.GPUTexture((self.img_width, self.img_height), layers=0, is_cubemap=False, format='DEPTH_COMPONENT24')
-            
-            #self.offscreen = gpu.types.GPUFrameBuffer(depth_slot=depth_tex, color_slots=color_tex)
-            
             self.offscreen = gpu.types.GPUOffScreen(self.img_width, self.img_height, format='RGBA32F')
         except Exception as e:
             print(e)
@@ -718,34 +590,22 @@ class OffScreenDraw(bpy.types.Operator):
         
         with self.offscreen.bind():
             gpu.state.depth_test_set('NONE')
+            
             self.shader_hrdi.bind()
-            
             self.shader_hrdi.uniform_float("img_size", (self.img_width, self.img_height))
-            
             self.shader_hrdi.uniform_int("enable_cld", 1);
             self.shader_hrdi.uniform_int("enable_atmo", 1);
             self.shader_hrdi.uniform_float("light_intsty", context.scene.my_tool.prop_sun_intensity * 1000000.0)
             cloud_uniforms(self, context, self.shader_hrdi)
             
-            #self.shader_hrdi.uniform_sampler("tex", self.tex_noise_32_3D)
-            #self.shader_hrdi.uniform_sampler("tex", self.tex_noise_1024_2D)
-            
             self.batch_hrdi.draw(self.shader_hrdi)
             
-            buffer = self.offscreen.texture_color.read()
-        #buffer = self.offscreen.read_color(0, 0, self.img_width, self.img_height, 4, 0, 'FLOAT')
-        
+        buffer = self.offscreen.texture_color.read()
         buffer.dimensions = self.img_width * self.img_height * 4
         bpy.data.images[self.img_name].pixels.foreach_set(buffer)
         
     @staticmethod
     def draw_to_viewport(self, context):
-
-        #fbo = gpu.state.active_framebuffer_get()
-        #with fbo.bind():
-        
-        #fbo = gpu.state.active_framebuffer_get()
-        #self.fbo.clear(depth=0.0)
         
         width = bpy.context.region.width        
         height = bpy.context.region.height
@@ -760,7 +620,6 @@ class OffScreenDraw(bpy.types.Operator):
         inv_vp_mat = proj_mat
         inv_vp_mat = inv_vp_mat.inverted()
         
-        #self.shader_viewport.uniform_float("view", bpy.context.region_data.view_matrix)
         self.shader_viewport.uniform_float("projection", bpy.context.region_data.window_matrix)
         
         self.shader_viewport.uniform_float("inv_vp_mat", inv_vp_mat)    
@@ -789,25 +648,21 @@ class OffScreenDraw(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
-        if OffScreenDraw.is_enabled:
+        if STRATUS_OT_viewport_editor.is_enabled:
             self.cancel(context)
             return {'FINISHED'}
-        else:
+        else:            
+            STRATUS_OT_viewport_editor.init_shaders(self)
+            STRATUS_OT_viewport_editor.init_textures(self)
+            STRATUS_OT_viewport_editor.init_world_node_tree(self)
+            STRATUS_OT_viewport_editor._setup_offscreen(self, context)
             
-            OffScreenDraw.init_shaders(self)
-            OffScreenDraw.init_textures(self)
-            OffScreenDraw.init_world_node_tree(self)
-            
-            OffScreenDraw._setup_offscreen(self, context)
-            if self.offscreen:
-                pass
-                #self._texture = self.offscreen.color_texture
-            else:
+            if not self.offscreen:
                 self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
                 return {'CANCELLED'}
 
-            OffScreenDraw.handle_add(self, context)
-            OffScreenDraw.is_enabled = True
+            STRATUS_OT_viewport_editor.handle_add(self, context)
+            STRATUS_OT_viewport_editor.is_enabled = True
 
             if context.area:
                 context.area.tag_redraw()
@@ -817,40 +672,39 @@ class OffScreenDraw(bpy.types.Operator):
             return {'RUNNING_MODAL'}
 
     def cancel(self, context):
-        OffScreenDraw.handle_remove()
-        OffScreenDraw.is_enabled = False
+        STRATUS_OT_viewport_editor.handle_remove()
+        STRATUS_OT_viewport_editor.is_enabled = False
 
         if context.area:
             context.area.tag_redraw()
 
-##################################################################################
+class STRATUS_OT_prop_observer(bpy.types.Operator):
+    bl_idname = "stratus.prop_observer"
+    bl_label  = ""
 
-class DRAGGABLEPROP_OT_subscribe(bpy.types.Operator):
-    bl_idname  = "draggableprop.subscribe"
-    bl_label   = ""
-    stop: bpy.props.BoolProperty()  # This is used so we don't end up in an infinite loop because we blocked the release event
+    _timer = None
+    _stop = False
+    def invoke(self, context, event):
+            wm = context.window_manager
+            self._timer = wm.event_timer_add(0.016, window=context.window)
+
+            context.window_manager.modal_handler_add(self)
+            return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
-        if self.stop:
-            global update_hrdi
-            context.scene.my_tool.is_dragging = False
-            update_viewers(context)
+        global editing_prop
+        global update_hrdi
+
+        if self._stop:
+            editing_prop = False
             update_hrdi = False
-            print("End Dragging !")
-            
-            #update_viewers(context)
+            update_viewers(context)
             return {'FINISHED'}
-        if event.value == 'RELEASE':  # Stop the modal on next frame. Don't block the event since we want to exit the field dragging
-            self.stop = True
+        
+        if event.value == 'RELEASE':
+            self._stop = True
 
         return {'PASS_THROUGH'}
-
-    def invoke(self, context, event):
-        self.stop = False
-        context.window_manager.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
-    
-##################################################################################
 
 class STRATUS_PT_cloud_panel(bpy.types.Panel):
     bl_label = "Clouds"
@@ -858,8 +712,6 @@ class STRATUS_PT_cloud_panel(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
-    
-    bpy.props.IntProperty(name="test_val",min=1, max=2)
     
     def draw(self, context):
         layout = self.layout
@@ -919,7 +771,7 @@ class STRATUS_PT_atmo_panel(bpy.types.Panel):
         render_options.label(text="Atmosphere")
         render_options.prop(mytool, 'atm_show_viewport', icon=icon_vp)
         render_options.prop(mytool, 'atm_show_render', icon=icon_r)
-
+        
         layout.prop(mytool, "prop_sundisk")
         layout.separator()
         layout.prop(mytool, "prop_sun_size")
@@ -934,7 +786,7 @@ class STRATUS_PT_atmo_panel(bpy.types.Panel):
         layout.prop(mytool, "prop_dust", slider=True)
         layout.prop(mytool, "prop_ozone", slider=True)
 
-classes = (Properties, OffScreenDraw, DRAGGABLEPROP_OT_subscribe, STRATUS_PT_cloud_panel, STRATUS_PT_atmo_panel)
+classes = (Properties, STRATUS_OT_viewport_editor, STRATUS_OT_prop_observer, STRATUS_PT_cloud_panel, STRATUS_PT_atmo_panel)
 
 def register():
     for cls in classes:
@@ -949,7 +801,6 @@ def unregister():
         bpy.utils.unregister_class(cls)
         
     del bpy.types.Scene.my_tool
-
 
 if __name__ == "__main__":
     register()
