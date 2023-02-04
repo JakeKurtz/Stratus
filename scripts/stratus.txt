@@ -1,0 +1,955 @@
+# Draws an off-screen buffer and display it in the corner of the view.
+import bpy
+import bgl
+import gpu
+
+import mathutils
+import math 
+
+from gpu_extras.presets import draw_texture_2d
+from gpu_extras.batch import batch_for_shader
+
+from bpy.props import (StringProperty,
+                       BoolProperty,
+                       IntProperty,
+                       FloatProperty,
+                       FloatVectorProperty,
+                       EnumProperty,
+                       PointerProperty,
+                       )
+from bpy.types import (Panel,
+                       Menu,
+                       Operator,
+                       PropertyGroup,
+                       )
+
+def update_viewers(context):
+    if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
+        wman = bpy.data.window_managers['WinMan']
+        for win in wman.windows :
+            for area in win.screen.areas :
+                if area.type=='VIEW_3D' :
+                    for space in area.spaces :
+                        if space.type == 'VIEW_3D' and space.shading.type == 'RENDERED' :
+                            space.shading.type = 'SOLID'
+                            space.shading.type = 'RENDERED'
+
+update_hrdi = False
+frame_done = False
+
+def update_prop(self, value):
+    
+    global update_hrdi
+    
+    if not self.is_dragging:
+        print("Beginning dragging the slider !")
+        self.is_dragging = True
+        update_hrdi = True
+        bpy.ops.draggableprop.subscribe('INVOKE_DEFAULT')
+
+class Properties(PropertyGroup):
+
+    is_dragging: bpy.props.BoolProperty()
+
+    object_color: FloatVectorProperty(  
+       name="object_color",
+       subtype='COLOR',
+       default=(1.0, 1.0, 1.0),
+       min=0.0, max=1.0,
+       description="color picker",
+       update = update_prop
+       )
+
+    prop_cld_radius: FloatProperty(
+        name = "Cloud Radius",
+        description = "A float property",
+        subtype="DISTANCE",
+        default = 6500,
+        min = 1.0,
+        update=update_prop
+        )
+        
+    prop_cld_center: FloatProperty(
+        name = "Cloud Center",
+        description = "A float property",
+        subtype="DISTANCE",
+        default = 1.0,
+        min = 0.0,
+        update=update_prop
+        )
+        
+    prop_cld_thickness: FloatProperty(
+        name = "Thickness",
+        description = "A float property",
+        subtype="DISTANCE",
+        default = 50,
+        min = 1.0,
+        update=update_prop
+        )
+        
+    prop_cld_top_roundness: FloatProperty(
+        name = "Top Roundness",
+        description = "A float property",
+        default = 0.0,
+        min = 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+        
+    prop_cld_btm_roundness: FloatProperty(
+        name = "Bottom Roundness",
+        description = "A float property",
+        default = 0.2,
+        min = 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+        
+    prop_cld_density: FloatProperty(
+        name = "Density",
+        description = "A float property",
+        default = 2.0,
+        min = 0.0,
+        update=update_prop
+        )
+
+    prop_cld_top_density: FloatProperty(
+        name = "Top Density",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_cld_btm_density: FloatProperty(
+        name = "Bottom Density",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_detail_scale: FloatProperty(
+        name = "Detail Noise Scale",
+        description="Something",
+        default=0.08,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_shape_scale: FloatProperty(
+        name = "Shape Noise Scale",
+        description="Something",
+        default=0.025,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_coverage_scale: FloatProperty(
+        name = "Coverage Noise Scale",
+        description="Something",
+        default=0.0008,
+        min= 0.0,
+        max = 1,
+        update=update_prop
+    ) 
+    
+    prop_shape_scale2: FloatProperty(
+        name = "Shape Noise Scale2",
+        description="Something",
+        default=0.01,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_detail_intsty: FloatProperty(
+        name = "Detail Noise Intensity",
+        description="Something",
+        default=0.3,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    ) 
+    
+    prop_shape_intsty: FloatProperty(
+        name = "Shape Noise Intensity",
+        description="Something",
+        default=0.25,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    ) 
+
+    prop_coverage_intsty: FloatProperty(
+        name = "Coverage Noise Intensity",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    )
+    
+    prop_shape_intsty2: FloatProperty(
+        name = "Shape Noise Intensity2",
+        description="Something",
+        default=0.25,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_silver_intsty: FloatProperty(
+        name = "Silverline Intensity",
+        description="Something",
+        default=1.13,
+        min= 0.0,
+        update=update_prop
+    )  
+    
+    prop_silver_spread: FloatProperty(
+        name = "Silverline Spread",
+        description="Something",
+        default=0.12,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+    ) 
+    
+    prop_g: FloatProperty(
+        name = "g",
+        description="Something",
+        default=-0.02,
+        min= -1.0,
+        max = 1.0,
+        update=update_prop
+    )  
+    
+    density_offset: FloatProperty(
+        name = "density_offset",
+        description="Something",
+        default=100,
+        update=update_prop
+        #min= -1.0,
+        #max = 1.0
+    )  
+         
+# ------------------------------------------------------------------------
+#    Atmo Properties
+# ------------------------------------------------------------------------
+
+    prop_sundisk: BoolProperty(
+        name="Sun Disk",
+        description="A bool property",
+        default = True,
+        update=update_prop
+        )
+
+    prop_sun_size: FloatProperty(
+        name = "Sun Size",
+        description = "A float property",
+        default = 0.545,
+        subtype="ANGLE",
+        min = 0.0,
+        max = 90.0,
+        update=update_prop
+        )
+        
+    prop_sun_intensity: FloatProperty(
+        name = "Sun Intensity",
+        description = "A float property",
+        default = 1.0,
+        min = 0.0,
+        update=update_prop
+        )
+        
+    prop_sun_elevation: FloatProperty(
+        name = "Sun Elevation",
+        description = "A float property",
+        default = 15.0,
+        subtype="ANGLE",
+        update=update_prop
+        )
+        
+    prop_sun_rotation: FloatProperty(
+        name = "Sun Rotation",
+        description = "A float property",
+        default = 0.0,
+        subtype="ANGLE",
+        update=update_prop
+        )
+        
+    prop_sky_altitude: FloatProperty(
+        name = "Altitude",
+        description = "A float property",
+        default = 0.0,
+        subtype="DISTANCE",
+        min = 0.0,
+        update=update_prop
+        )
+
+    prop_air: FloatProperty(
+        name = "Air",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    ) 
+    
+    prop_dust: FloatProperty(
+        name = "Dust",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    ) 
+    
+    prop_ozone: FloatProperty(
+        name = "Ozone",
+        description="Something",
+        default=1.0,
+        min= 0.0,
+        max = 10.0,
+        update=update_prop
+    ) 
+    
+    atm_show_viewport: BoolProperty(
+        name="",
+        description="A bool property",
+        default = True,
+        update=update_prop
+        )
+        
+    atm_show_render: BoolProperty(
+        name="",
+        description="A bool property",
+        default = True,
+        update=update_prop
+        )
+    
+    cld_show_viewport: BoolProperty(
+        name="",
+        description="A bool property",
+        default = True,
+        update=update_prop
+        )
+        
+    cld_show_render: BoolProperty(
+        name="",
+        description="A bool property",
+        default = True,
+        update=update_prop
+        )
+
+def cloud_uniforms(self, context, shader):
+    scene = context.scene
+    mytool = scene.my_tool
+    
+    shader.uniform_float("time", mytool.prop_cld_center)
+    #shader.uniform_float("density_offset", mytool.density_offset)
+    
+    shader.uniform_float("attinuation_clamp", 1)
+    
+    shader.uniform_float("planet_center", (0,0,-6378150 - mytool.prop_sky_altitude))
+    shader.uniform_float("planet_radius", 6378137)
+    shader.uniform_float("atmo_radius", 80000 + 6378137)
+    shader.uniform_float("altitude", mytool.prop_sky_altitude)
+    
+    shader.uniform_float("scale_height_rayleigh",7994)
+    shader.uniform_float("scale_height_mie",1200)
+    shader.uniform_float("scale_height_absorption",8000)
+    
+    shader.uniform_float("ray_intensity", mytool.prop_air)
+    shader.uniform_float("mie_intensity", mytool.prop_dust)
+    shader.uniform_float("absorption_intensity", mytool.prop_ozone)
+    
+    #shader.uniform_float("cld_radius", 6378137)
+    #shader.uniform_float("cld_center", (0.0, 0.0, -6378150+2000))
+    shader.uniform_float("cld_radius", 6000 + 1000000)
+    shader.uniform_float("cld_center", (0.0, 0.0, -1002000))
+    shader.uniform_float("cld_thickness", mytool.prop_cld_thickness)
+    
+    shader.uniform_float("cld_top_roundness", mytool.prop_cld_top_roundness)
+    shader.uniform_float("cld_btm_roundness", mytool.prop_cld_btm_roundness)
+    
+    shader.uniform_float("cld_density", mytool.prop_cld_density)
+    shader.uniform_float("cld_top_density", mytool.prop_cld_top_density)
+    shader.uniform_float("cld_btm_density", mytool.prop_cld_btm_density)
+
+    shader.uniform_float("cld_detail_scale", mytool.prop_detail_scale)
+    shader.uniform_float("cld_shape_scale", mytool.prop_shape_scale)
+    shader.uniform_float("cld_coverage_scale", mytool.prop_coverage_scale)
+    shader.uniform_float("cld_shape_scale2", mytool.prop_shape_scale2)
+    
+    shader.uniform_float("cld_detail_intsty", mytool.prop_detail_intsty)
+    shader.uniform_float("cld_shape_intsty", mytool.prop_shape_intsty)
+    shader.uniform_float("cld_coverage_intsty", mytool.prop_coverage_intsty)
+    #shader.uniform_float("prop_shape_intsty2", mytool.prop_shape_intsty2)
+    
+    shader.uniform_float("cld_silver_intsty", mytool.prop_silver_intsty)
+    shader.uniform_float("cld_silver_spread", mytool.prop_silver_spread)
+    shader.uniform_float("g", mytool.prop_g)
+    
+    light_dir = mathutils.Vector(
+    (math.sin(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
+    math.cos(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
+    math.sin(mytool.prop_sun_elevation))
+    )
+    
+    light_dir.normalize()
+    
+    shader.uniform_float("light_dir", light_dir)
+    shader.uniform_float("sun_size", mytool.prop_sun_size)
+    
+    shader.uniform_sampler("noise_tex_3D_32", self.tex_noise_32_3D)
+    shader.uniform_sampler("noise_tex_3D_128", self.tex_noise_128_3D)
+    shader.uniform_sampler("noise_tex_2D_1024", self.tex_noise_1024_2D)
+    shader.uniform_sampler("blue_noise", self.tex_noise_blue_2D)
+    
+    '''
+    bgl.glActiveTexture(bgl.GL_TEXTURE0);
+    bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[0]);
+    shader.uniform_int("noise_tex_3D_32", 0);
+
+    bgl.glActiveTexture(bgl.GL_TEXTURE1);
+    bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[1]);
+    shader.uniform_int("noise_tex_3D_128", 1);
+       
+    bgl.glActiveTexture(bgl.GL_TEXTURE2);
+    bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[2]);
+    shader.uniform_int("noise_tex_2D_1024", 2);
+    
+    bgl.glActiveTexture(bgl.GL_TEXTURE3);
+    bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[3]);
+    shader.uniform_int("blue_noise", 3);
+    '''
+    
+
+class OffScreenDraw(bpy.types.Operator):
+    bl_idname = "view3d.offscreen_draw"
+    bl_label = "View3D Offscreen Draw"
+
+    img_name = "STRATUS_ENV_TEX"
+    img_width = 512#1024 * 2
+    img_height = 256#512 * 2
+
+    offscreen = None
+    fbo = None
+
+    tex_ids = None
+    
+    tex_noise_32_3D = None
+    tex_noise_128_3D = None
+    tex_noise_1024_2D = None
+    tex_noise_blue_2D = None
+    
+    shader_hrdi = None
+    batch_hrdi = None
+    
+    shader_viewport = None
+    batch_viewport = None
+
+    _handle_calc = None
+    _handle_draw = None
+    
+    is_enabled = False
+
+    # manage draw handler
+    @staticmethod
+    def draw_callback(self, context):
+        global update_hrdi
+        if update_hrdi is True:
+            self.draw_to_hrdi(self, context)
+        
+        self.draw_to_viewport(self, context)
+
+    @staticmethod
+    def handle_add(self, context):
+        OffScreenDraw._handle_draw = bpy.types.SpaceView3D.draw_handler_add(
+                self.draw_callback, (self, context),
+                'WINDOW', 'POST_VIEW',
+                )
+
+    @staticmethod
+    def handle_remove():
+        if OffScreenDraw._handle_draw is not None:
+            bpy.types.SpaceView3D.draw_handler_remove(OffScreenDraw._handle_draw, 'WINDOW')
+
+        OffScreenDraw._handle_draw = None
+
+    def init_world_node_tree(self):
+        C = bpy.context
+        scn = C.scene
+
+        # Get the environment node tree of the current scene
+        node_tree = scn.world.node_tree
+        tree_nodes = node_tree.nodes
+
+        # Clear all nodes
+        tree_nodes.clear()
+
+        # Add Background node
+        node_background = tree_nodes.new(type='ShaderNodeBackground')
+        node_background.inputs["Strength"].default_value = 0.01
+
+        # Add Environment Texture node
+        node_environment = tree_nodes.new('ShaderNodeTexEnvironment')
+        # Load and assign the image to the node property
+        node_environment.image = bpy.data.images[self.img_name]
+        node_environment.location = -300,0
+
+        # Add Output node
+        node_output = tree_nodes.new(type='ShaderNodeOutputWorld')   
+        node_output.location = 200,0
+
+        # Link all nodes
+        links = node_tree.links
+        link = links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
+        link = links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
+
+    def init_textures(self):
+        self.tex_ids = bgl.Buffer(bgl.GL_INT, [4])
+        
+        if self.img_name in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images[self.img_name])
+            
+        bpy.data.images.new(self.img_name, self.img_width, self.img_height, alpha=True, float_buffer=True, stereo3d=False)
+        
+        img = bpy.data.images[self.img_name]
+        
+        img.scale(self.img_width, self.img_height)
+        img.filepath = 'C:/Users/jake/source/blender addons/clouds/STRATUS_ENV_TEX.exr'
+        img.file_format = 'OPEN_EXR'
+        
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
+        img_buff = gpu.types.Buffer('FLOAT', 32**3 * 4, list(img.pixels[:]))
+        self.tex_noise_32_3D = gpu.types.GPUTexture((32, 32, 32), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
+        bpy.data.images.remove(img)
+        
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
+        img_buff = gpu.types.Buffer('FLOAT', 128**3 * 4, list(img.pixels[:]))
+        self.tex_noise_128_3D = gpu.types.GPUTexture((128, 128, 128), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
+        bpy.data.images.remove(img)
+        
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
+        self.tex_noise_1024_2D = gpu.texture.from_image(img)
+        bpy.data.images.remove(img)
+        
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
+        self.tex_noise_blue_2D = gpu.texture.from_image(img)
+        bpy.data.images.remove(img)
+        
+        
+        # Generate Textures
+        bgl.glGenTextures(4, self.tex_ids)
+
+        # Load 32x32x32 Inverse Worly noise tex
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
+        img.gl_load()
+        
+        buffer = bgl.Buffer(bgl.GL_FLOAT, (32**3) * 4)
+        
+        bgl.glActiveTexture(bgl.GL_TEXTURE0)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
+        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+        
+        bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[0])
+        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA, 32, 32, 32, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
+        
+        img.gl_free()
+        bpy.data.images.remove(img)
+        
+        # Load 128 Inverse Worly noise tex
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
+        img.gl_load()
+        
+        buffer = bgl.Buffer(bgl.GL_FLOAT, (128**3) * 4)
+        
+        bgl.glActiveTexture(bgl.GL_TEXTURE1)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
+        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+        
+        bgl.glBindTexture(bgl.GL_TEXTURE_3D, self.tex_ids[1])
+        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA, 128, 128, 128, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
+                
+        img.gl_free()
+        bpy.data.images.remove(img)
+        
+        # Load 1024 coverage noise tex   
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
+        img.gl_load()
+        
+        buffer = bgl.Buffer(bgl.GL_FLOAT, (1024**2) * 4)
+        
+        bgl.glActiveTexture(bgl.GL_TEXTURE1)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
+        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+        
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[2])
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, 1024, 1024, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
+                
+        img.gl_free()
+        bpy.data.images.remove(img)
+        
+        # Load blue noise tex
+        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
+        img.gl_load()
+        
+        buffer = bgl.Buffer(bgl.GL_FLOAT, (128**2)*2)
+        
+        bgl.glActiveTexture(bgl.GL_TEXTURE0)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, img.bindcode)
+        bgl.glGetTexImage(bgl.GL_TEXTURE_2D, 0, bgl.GL_RED, bgl.GL_FLOAT, buffer)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+        
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.tex_ids[3])
+        
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
+        
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_R16F, 128, 128, 0, bgl.GL_RED, bgl.GL_FLOAT, buffer)
+                
+        img.gl_free()
+        bpy.data.images.remove(img)
+        
+    
+    def init_shaders(self):            
+        coords = (
+            (-1, +1, 0),
+            (+1, +1, 0),
+            (-1, -1, 0),
+            (+1, -1, 0))
+            
+        indices = ((0,1,2), (1,3,2))
+
+        with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.vert", 'r') as file:
+            vertex_shader = file.read()
+
+        with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.frag", 'r') as file:
+            fragment_shader = file.read()
+
+        self.shader_hrdi = gpu.types.GPUShader(vertex_shader, fragment_shader, )
+        self.batch_hrdi = batch_for_shader(self.shader_hrdi, 'TRIS', {"position": coords}, indices=indices)
+        
+        coords = (
+            (-1, -1, -1), (+1, -1, -1),
+            (-1, +1, -1), (+1, +1, -1),
+            (-1, -1, +1), (+1, -1, +1),
+            (-1, +1, +1), (+1, +1, +1))
+
+        indices = (
+            (0, 1, 3), (0, 2, 3), (4,5,7), (4,6,7),
+            (0,4,5), (0,1,5), (2,0,4), (2,6,4),
+            (1,3,7), (1, 5,7), (3, 2, 6), (3, 6, 7))
+        
+        with open("C:/Users/jake/source/blender addons/clouds/cloud.vert", 'r') as file:
+            vertex_shader = file.read()
+
+        with open("C:/Users/jake/source/blender addons/clouds/cloud.frag", 'r') as file:
+            fragment_shader = file.read()
+
+        self.shader_viewport = gpu.types.GPUShader(vertex_shader, fragment_shader, )
+        self.batch_viewport = batch_for_shader(self.shader_viewport, 'TRIS', {"position": coords}, indices=indices)
+
+    # off-screen buffer
+    @staticmethod
+    def _setup_offscreen(self, context):
+        try:
+            
+            #color_tex = gpu.types.GPUTexture((self.img_width, self.img_height), layers=0, is_cubemap=False, format='RGBA32F')
+            #depth_tex = gpu.types.GPUTexture((self.img_width, self.img_height), layers=0, is_cubemap=False, format='DEPTH_COMPONENT24')
+            
+            #self.offscreen = gpu.types.GPUFrameBuffer(depth_slot=depth_tex, color_slots=color_tex)
+            
+            self.offscreen = gpu.types.GPUOffScreen(self.img_width, self.img_height, format='RGBA32F')
+        except Exception as e:
+            print(e)
+            self.offscreen = None
+
+    @staticmethod
+    def _update_offscreen(self, context):
+        context = bpy.context
+        scene = context.scene
+
+        view_matrix = scene.camera.matrix_world.inverted()
+
+        projection_matrix = scene.camera.calc_matrix_camera(
+            context.evaluated_depsgraph_get(), x=scene.render.resolution_x, y=scene.render.resolution_y)
+
+        self.offscreen.draw_view3d(
+            scene,
+            context.view_layer,
+            context.space_data,
+            context.region,
+            view_matrix,
+            projection_matrix,
+            do_color_management=True)
+
+    @staticmethod
+    def draw_to_hrdi(self, context):
+        
+        with self.offscreen.bind():
+            gpu.state.depth_test_set('NONE')
+            self.shader_hrdi.bind()
+            
+            self.shader_hrdi.uniform_float("img_size", (self.img_width, self.img_height))
+            
+            self.shader_hrdi.uniform_int("enable_cld", 1);
+            self.shader_hrdi.uniform_int("enable_atmo", 1);
+            self.shader_hrdi.uniform_float("light_intsty", context.scene.my_tool.prop_sun_intensity * 1000000.0)
+            cloud_uniforms(self, context, self.shader_hrdi)
+            
+            #self.shader_hrdi.uniform_sampler("tex", self.tex_noise_32_3D)
+            #self.shader_hrdi.uniform_sampler("tex", self.tex_noise_1024_2D)
+            
+            self.batch_hrdi.draw(self.shader_hrdi)
+            
+            buffer = self.offscreen.texture_color.read()
+        #buffer = self.offscreen.read_color(0, 0, self.img_width, self.img_height, 4, 0, 'FLOAT')
+        
+        buffer.dimensions = self.img_width * self.img_height * 4
+        bpy.data.images[self.img_name].pixels.foreach_set(buffer)
+        
+    @staticmethod
+    def draw_to_viewport(self, context):
+
+        #fbo = gpu.state.active_framebuffer_get()
+        #with fbo.bind():
+        
+        #fbo = gpu.state.active_framebuffer_get()
+        #self.fbo.clear(depth=0.0)
+        
+        width = bpy.context.region.width        
+        height = bpy.context.region.height
+        
+        gpu.state.depth_test_set('LESS')
+        
+        self.shader_viewport.bind()
+        
+        view_mat = bpy.context.region_data.view_matrix
+        proj_mat = bpy.context.region_data.perspective_matrix
+        
+        inv_vp_mat = proj_mat
+        inv_vp_mat = inv_vp_mat.inverted()
+        
+        #self.shader_viewport.uniform_float("view", bpy.context.region_data.view_matrix)
+        self.shader_viewport.uniform_float("projection", bpy.context.region_data.window_matrix)
+        
+        self.shader_viewport.uniform_float("inv_vp_mat", inv_vp_mat)    
+        self.shader_viewport.uniform_float("img_size", (width, height))
+        
+        self.shader_viewport.uniform_int("enable_cld", context.scene.my_tool.cld_show_viewport);
+        self.shader_viewport.uniform_int("enable_atmo", context.scene.my_tool.atm_show_viewport);
+        
+        self.shader_viewport.uniform_float("light_intsty",context.scene.my_tool.prop_sun_intensity * 10.0)
+        
+        cloud_uniforms(self, context, self.shader_viewport)
+        
+        self.batch_viewport.draw(self.shader_viewport)
+        
+        gpu.state.depth_test_set('NONE')
+
+    # operator functions
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == 'VIEW_3D'
+
+    def modal(self, context, event):
+        if context.area:
+            context.area.tag_redraw()
+
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event):
+        if OffScreenDraw.is_enabled:
+            self.cancel(context)
+            return {'FINISHED'}
+        else:
+            
+            OffScreenDraw.init_shaders(self)
+            OffScreenDraw.init_textures(self)
+            OffScreenDraw.init_world_node_tree(self)
+            
+            OffScreenDraw._setup_offscreen(self, context)
+            if self.offscreen:
+                pass
+                #self._texture = self.offscreen.color_texture
+            else:
+                self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
+                return {'CANCELLED'}
+
+            OffScreenDraw.handle_add(self, context)
+            OffScreenDraw.is_enabled = True
+
+            if context.area:
+                context.area.tag_redraw()
+
+            context.window_manager.modal_handler_add(self)
+            
+            return {'RUNNING_MODAL'}
+
+    def cancel(self, context):
+        OffScreenDraw.handle_remove()
+        OffScreenDraw.is_enabled = False
+
+        if context.area:
+            context.area.tag_redraw()
+
+##################################################################################
+
+class DRAGGABLEPROP_OT_subscribe(bpy.types.Operator):
+    bl_idname  = "draggableprop.subscribe"
+    bl_label   = ""
+    stop: bpy.props.BoolProperty()  # This is used so we don't end up in an infinite loop because we blocked the release event
+
+    def modal(self, context, event):
+        if self.stop:
+            global update_hrdi
+            context.scene.my_tool.is_dragging = False
+            update_viewers(context)
+            update_hrdi = False
+            print("End Dragging !")
+            
+            #update_viewers(context)
+            return {'FINISHED'}
+        if event.value == 'RELEASE':  # Stop the modal on next frame. Don't block the event since we want to exit the field dragging
+            self.stop = True
+
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event):
+        self.stop = False
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+    
+##################################################################################
+
+class STRATUS_PT_cloud_panel(bpy.types.Panel):
+    bl_label = "Clouds"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+    
+    bpy.props.IntProperty(name="test_val",min=1, max=2)
+    
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        mytool = scene.my_tool
+        
+        icon_vp = 'RESTRICT_VIEW_OFF' if mytool.cld_show_viewport else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if mytool.cld_show_render else "RESTRICT_RENDER_ON"
+
+        render_options = layout.row(align=True)
+        render_options.label(text="Clouds")
+        render_options.prop(mytool, 'cld_show_viewport', icon=icon_vp)
+        render_options.prop(mytool, 'cld_show_render', icon=icon_r)
+
+        layout.prop(mytool, "object_color")
+        layout.prop(mytool, "prop_cld_radius")
+        layout.prop(mytool, "prop_cld_center")
+        layout.prop(mytool, "prop_cld_thickness")
+        layout.separator()
+        layout.prop(mytool, "prop_cld_top_roundness", slider=True)
+        layout.prop(mytool, "prop_cld_btm_roundness", slider=True)
+        layout.separator()
+        layout.prop(mytool, "prop_cld_density")
+        layout.prop(mytool, "prop_cld_top_density", slider=True)
+        layout.prop(mytool, "prop_cld_btm_density", slider=True)
+        layout.separator()
+        layout.prop(mytool, "prop_detail_scale")
+        layout.prop(mytool, "prop_shape_scale")
+        layout.prop(mytool, "prop_coverage_scale")
+        layout.prop(mytool, "prop_shape_scale2")
+        layout.separator()
+        layout.prop(mytool, "prop_detail_intsty")
+        layout.prop(mytool, "prop_shape_intsty")
+        layout.prop(mytool, "prop_coverage_intsty")
+        layout.separator()
+        layout.prop(mytool, "prop_silver_intsty")
+        layout.prop(mytool, "prop_silver_spread", slider=True)
+        #layout.prop(mytool, "density_offset", slider=True)
+        #layout.prop(mytool, "g", slider=True)
+        
+class STRATUS_PT_atmo_panel(bpy.types.Panel):
+    bl_label = "Atmosphere"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        mytool = scene.my_tool
+        
+        icon_vp = 'RESTRICT_VIEW_OFF' if mytool.atm_show_viewport else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if mytool.atm_show_render else "RESTRICT_RENDER_ON"
+
+        render_options = layout.row(align=True)
+        render_options.label(text="Atmosphere")
+        render_options.prop(mytool, 'atm_show_viewport', icon=icon_vp)
+        render_options.prop(mytool, 'atm_show_render', icon=icon_r)
+
+        layout.prop(mytool, "prop_sundisk")
+        layout.separator()
+        layout.prop(mytool, "prop_sun_size")
+        layout.prop(mytool, "prop_sun_intensity")
+        layout.separator()
+        layout.prop(mytool, "prop_sun_elevation")
+        layout.prop(mytool, "prop_sun_rotation")
+        layout.separator()
+        layout.prop(mytool, "prop_sky_altitude")
+        layout.separator()
+        layout.prop(mytool, "prop_air", slider=True)
+        layout.prop(mytool, "prop_dust", slider=True)
+        layout.prop(mytool, "prop_ozone", slider=True)
+
+classes = (Properties, OffScreenDraw, DRAGGABLEPROP_OT_subscribe, STRATUS_PT_cloud_panel, STRATUS_PT_atmo_panel)
+
+def register():
+    for cls in classes:
+        bpy.utils.register_class(cls)
+    
+    bpy.types.Scene.my_tool = PointerProperty(type=Properties)
+    
+    bpy.context.scene.my_tool.is_dragging = False
+
+def unregister():
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
+        
+    del bpy.types.Scene.my_tool
+
+
+if __name__ == "__main__":
+    register()
