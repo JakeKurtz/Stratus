@@ -1,9 +1,7 @@
-# Draws an off-screen buffer and display it in the corner of the view.
 import bpy
 import gpu
-
+import math
 import mathutils
-import math 
 
 from gpu_extras.presets import draw_texture_2d
 from gpu_extras.batch import batch_for_shader
@@ -16,16 +14,34 @@ from bpy.props import (StringProperty,
                        EnumProperty,
                        PointerProperty,
                        )
+                       
 from bpy.types import (Panel,
                        Menu,
                        Operator,
                        PropertyGroup,
                        )
 
+# ---------------------------------------------------------------------------- #
+#                                    GLOBALS                                   #
+# ---------------------------------------------------------------------------- #
+
+img_name = "STRATUS_ENV_TEX"
+
 update_hrdi = False
 editing_prop = False
 
+state = {"is_rendering": False}
+
+noise_textures = {}
+shader = {}
+batch = {}
+
+# ---------------------------------------------------------------------------- #
+#                                   CALLBACKS                                  #
+# ---------------------------------------------------------------------------- #
+
 def update_viewers(context):
+    # Flip the shading type, which force Cycles to update its textures.
     if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
         wman = bpy.data.window_managers['WinMan']
         for win in wman.windows :
@@ -36,11 +52,12 @@ def update_viewers(context):
                             space.shading.type = 'SOLID'
                             space.shading.type = 'RENDERED'
 
-    x = context.scene.render.resolution_percentage
-    context.scene.render.resolution_percentage = x                          
+    # Flip some scene property to get the Eevee to update its textures in certain circumstances.
+    if context.scene.render.engine == 'BLENDER_EEVEE':
+        x = context.scene.render.resolution_percentage
+        context.scene.render.resolution_percentage = x                          
 
 def update_prop(self, value):
-
     global editing_prop
     global update_hrdi
 
@@ -48,8 +65,226 @@ def update_prop(self, value):
         editing_prop = True
         update_hrdi = True
         bpy.ops.stratus.prop_observer('INVOKE_DEFAULT')
+
+def set_render_state_true(scene):
+    state['is_rendering'] = True
+
+def set_render_state_false(scene):
+    state['is_rendering'] = False
+
+def render_hrdi(scene):
+    if state['is_rendering']:
+        print("DAMMIT Bobby!")
+
+# ---------------------------------------------------------------------------- #
+#                                    METHODS                                   #
+# ---------------------------------------------------------------------------- #
+
+def init_shaders():
+        coords = (
+            (-1, +1, 0),
+            (+1, +1, 0),
+            (-1, -1, 0),
+            (+1, -1, 0))
+            
+        indices = ((0,1,2), (1,3,2))
+
+        #with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.vert", 'r') as file:
+        with open("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/shaders/cloud_exr.vert", 'r') as file:
+            vertex_shader = file.read()
+        #with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.frag", 'r') as file:
+        with open("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/shaders/cloud_exr.frag", 'r') as file:
+            fragment_shader = file.read()
+
+        shader["hrdi"] = gpu.types.GPUShader(vertex_shader, fragment_shader, )
+        batch["hrdi"] = batch_for_shader(shader["hrdi"], 'TRIS', {"position": coords}, indices=indices)
+        
+        coords = (
+            (-1, -1, -1), (+1, -1, -1),
+            (-1, +1, -1), (+1, +1, -1),
+            (-1, -1, +1), (+1, -1, +1),
+            (-1, +1, +1), (+1, +1, +1))
+
+        indices = (
+            (0, 1, 3), (0, 2, 3), (4,5,7), (4,6,7),
+            (0,4,5), (0,1,5), (2,0,4), (2,6,4),
+            (1,3,7), (1, 5,7), (3, 2, 6), (3, 6, 7))
+        
+        #with open("C:/Users/jake/source/blender addons/clouds/cloud.vert", 'r') as file:
+        with open("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/shaders/cloud.vert", 'r') as file:
+            vertex_shader = file.read()
+        #with open("C:/Users/jake/source/blender addons/clouds/cloud.frag", 'r') as file:
+        with open("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/shaders/cloud.frag", 'r') as file:
+            fragment_shader = file.read()
+
+        shader["viewport"] = gpu.types.GPUShader(vertex_shader, fragment_shader, )
+        batch["viewport"] = batch_for_shader(shader["viewport"], 'TRIS', {"position": coords}, indices=indices)
+
+def init_hrdi_image(width, height):
+    if img_name not in bpy.data.images:
+        bpy.data.images.new(img_name, width, height, alpha=True, float_buffer=True, stereo3d=False)
+    bpy.data.images[img_name].scale(width, height)
+
+def init_textures():        
+        # Load 32x32x32 Inverse Worly noise tex
+        #img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
+        img = bpy.data.images.load("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/textures/noiseTex32.png", check_existing=True)
+        img_buff = gpu.types.Buffer('FLOAT', 32**3 * 4, list(img.pixels[:]))
+        noise_textures["tex_32_3D"] = gpu.types.GPUTexture((32, 32, 32), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
+        bpy.data.images.remove(img)
+        
+        # Load 128 Inverse Worly noise tex
+        #img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
+        img = bpy.data.images.load("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/textures/noiseTex128.png", check_existing=True)
+        img_buff = gpu.types.Buffer('FLOAT', 128**3 * 4, list(img.pixels[:]))
+        noise_textures["tex_128_3D"] = gpu.types.GPUTexture((128, 128, 128), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
+        bpy.data.images.remove(img)
+        
+        # Load 1024 coverage noise tex  
+        #img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
+        img = bpy.data.images.load("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/textures/coverage1024.png", check_existing=True)
+        noise_textures["tex_1024_2D"] = gpu.texture.from_image(img)
+        bpy.data.images.remove(img)
+        
+        # Load blue noise tex
+        #img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
+        img = bpy.data.images.load("C:/Users/alien/OneDrive/Desktop/Blender Addon Dev/Stratus/textures/HDR_L_1.png", check_existing=True)
+        noise_textures["blue_2D"] = gpu.texture.from_image(img)
+        bpy.data.images.remove(img)
+
+@staticmethod
+def cloud_uniforms(self, context, shader):
+    scene = context.scene
+    mytool = scene.my_tool
     
+    shader.uniform_float("time", mytool.prop_cld_center)
+    shader.uniform_float("attinuation_clamp", 1)
+    
+    shader.uniform_float("planet_center", (0,0,-6378150 - mytool.prop_sky_altitude))
+    shader.uniform_float("planet_radius", 6378137)
+    shader.uniform_float("atmo_radius", 80000 + 6378137)
+    shader.uniform_float("altitude", mytool.prop_sky_altitude)
+    
+    shader.uniform_float("scale_height_rayleigh",7994)
+    shader.uniform_float("scale_height_mie",1200)
+    shader.uniform_float("scale_height_absorption",8000)
+    
+    shader.uniform_float("ray_intensity", mytool.prop_air)
+    shader.uniform_float("mie_intensity", mytool.prop_dust)
+    shader.uniform_float("absorption_intensity", mytool.prop_ozone)
+    
+    shader.uniform_float("cld_radius", 6000 + 1000000)
+    shader.uniform_float("cld_center", (0.0, 0.0, -1002000))
+    shader.uniform_float("cld_thickness", mytool.prop_cld_thickness)
+    
+    shader.uniform_float("cld_top_roundness", mytool.prop_cld_top_roundness)
+    shader.uniform_float("cld_btm_roundness", mytool.prop_cld_btm_roundness)
+    
+    shader.uniform_float("cld_density", mytool.prop_cld_density)
+    shader.uniform_float("cld_top_density", mytool.prop_cld_top_density)
+    shader.uniform_float("cld_btm_density", mytool.prop_cld_btm_density)
+
+    shader.uniform_float("cld_detail_scale", mytool.prop_detail_scale)
+    shader.uniform_float("cld_shape_scale", mytool.prop_shape_scale)
+    shader.uniform_float("cld_coverage_scale", mytool.prop_coverage_scale)
+    shader.uniform_float("cld_shape_scale2", mytool.prop_shape_scale2)
+    
+    shader.uniform_float("cld_detail_intsty", mytool.prop_detail_intsty)
+    shader.uniform_float("cld_shape_intsty", mytool.prop_shape_intsty)
+    shader.uniform_float("cld_coverage_intsty", mytool.prop_coverage_intsty)
+    #shader.uniform_float("prop_shape_intsty2", mytool.prop_shape_intsty2)
+    
+    shader.uniform_float("cld_silver_intsty", mytool.prop_silver_intsty)
+    shader.uniform_float("cld_silver_spread", mytool.prop_silver_spread)
+    shader.uniform_float("g", mytool.prop_g)
+    
+    light_dir = mathutils.Vector(
+    (math.sin(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
+    math.cos(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
+    math.sin(mytool.prop_sun_elevation))
+    )
+    
+    light_dir.normalize()
+    
+    shader.uniform_float("light_dir", light_dir)
+    shader.uniform_float("sun_size", mytool.prop_sun_size)
+
+    shader.uniform_sampler("noise_tex_3D_32", noise_textures["tex_32_3D"])
+    shader.uniform_sampler("noise_tex_3D_128", noise_textures["tex_128_3D"])
+    shader.uniform_sampler("noise_tex_2D_1024", noise_textures["tex_1024_2D"])
+    shader.uniform_sampler("blue_noise", noise_textures["blue_2D"])
+
+@staticmethod
+def draw_to_viewport(self, context, enable_cld, enable_atmo):
+    
+    _shader = shader["viewport"]
+
+    width = context.region.width        
+    height = context.region.height
+    
+    gpu.state.depth_test_set('LESS')
+    
+    _shader.bind()
+    
+    proj_mat = bpy.context.region_data.perspective_matrix
+    
+    inv_vp_mat = proj_mat
+    inv_vp_mat = inv_vp_mat.inverted()
+    
+    _shader.uniform_float("projection", context.region_data.window_matrix)
+    
+    _shader.uniform_float("inv_vp_mat", inv_vp_mat)    
+    _shader.uniform_float("img_size", (width, height))
+    
+    _shader.uniform_int("enable_cld", enable_cld);
+    _shader.uniform_int("enable_atmo", enable_atmo);
+    
+    _shader.uniform_float("light_intsty", context.scene.my_tool.prop_sun_intensity * 10.0)
+    
+    cloud_uniforms(self, context, _shader)
+    
+    batch["viewport"].draw(_shader)
+    
+    gpu.state.depth_test_set('NONE')
+
+@staticmethod
+def draw_to_hrdi(self, context, enable_cld, enable_atmo, width, height):
+    mytool = context.scene.my_tool
+
+    with self._offscreen_fbo.bind():
+        gpu.state.depth_test_set('NONE')
+
+        _shader = shader["hrdi"]
+
+        _shader.bind()
+        _shader.uniform_float("img_size", (width, height))
+        _shader.uniform_int("enable_cld", enable_cld);
+        _shader.uniform_int("enable_atmo", enable_atmo);
+        _shader.uniform_float("light_intsty", mytool.prop_sun_intensity * 1000000.0)
+        cloud_uniforms(self, context, _shader)
+        
+        batch["hrdi"].draw(_shader)
+        
+    buffer = self._offscreen_fbo.texture_color.read()
+    buffer.dimensions = width * height * 4
+    bpy.data.images[img_name].pixels.foreach_set(buffer)
+
+@staticmethod
+def setup_offscreen(width, height):
+    _offscreen_fbo = None
+    try:
+        _offscreen_fbo = gpu.types.GPUOffScreen(width, height, format='RGBA32F')
+    except Exception as e:
+        print(e)
+    return _offscreen_fbo
+
+# ---------------------------------------------------------------------------- #
+#                                  PROPERTIES                                  #
+# ---------------------------------------------------------------------------- #
+
 class Properties(PropertyGroup):
+
+# ----------------------------- Cloud Properties ----------------------------- #
 
     object_color: FloatVectorProperty(  
        name="object_color",
@@ -120,7 +355,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_cld_btm_density: FloatProperty(
         name = "Bottom Density",
@@ -129,7 +364,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_detail_scale: FloatProperty(
         name = "Detail Noise Scale",
@@ -138,7 +373,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_shape_scale: FloatProperty(
         name = "Shape Noise Scale",
@@ -147,7 +382,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_coverage_scale: FloatProperty(
         name = "Coverage Noise Scale",
@@ -156,7 +391,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1,
         update=update_prop
-    ) 
+        ) 
     
     prop_shape_scale2: FloatProperty(
         name = "Shape Noise Scale2",
@@ -165,7 +400,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_detail_intsty: FloatProperty(
         name = "Detail Noise Intensity",
@@ -174,7 +409,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_shape_intsty: FloatProperty(
         name = "Shape Noise Intensity",
@@ -183,7 +418,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    ) 
+        ) 
 
     prop_coverage_intsty: FloatProperty(
         name = "Coverage Noise Intensity",
@@ -192,7 +427,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    )
+        )
     
     prop_shape_intsty2: FloatProperty(
         name = "Shape Noise Intensity2",
@@ -201,7 +436,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_silver_intsty: FloatProperty(
         name = "Silverline Intensity",
@@ -209,7 +444,7 @@ class Properties(PropertyGroup):
         default=1.13,
         min= 0.0,
         update=update_prop
-    )  
+        )  
     
     prop_silver_spread: FloatProperty(
         name = "Silverline Spread",
@@ -218,7 +453,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 1.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_g: FloatProperty(
         name = "g",
@@ -227,7 +462,7 @@ class Properties(PropertyGroup):
         min= -1.0,
         max = 1.0,
         update=update_prop
-    )  
+        )  
     
     density_offset: FloatProperty(
         name = "density_offset",
@@ -236,11 +471,9 @@ class Properties(PropertyGroup):
         update=update_prop
         #min= -1.0,
         #max = 1.0
-    )  
+        )  
          
-# ------------------------------------------------------------------------
-#    Atmo Properties
-# ------------------------------------------------------------------------
+# ----------------------- Atmosphere and Sun Properties ---------------------- #
 
     prop_sundisk: BoolProperty(
         name="Sun Disk",
@@ -299,7 +532,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_dust: FloatProperty(
         name = "Dust",
@@ -308,7 +541,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    ) 
+        ) 
     
     prop_ozone: FloatProperty(
         name = "Ozone",
@@ -317,7 +550,7 @@ class Properties(PropertyGroup):
         min= 0.0,
         max = 10.0,
         update=update_prop
-    ) 
+        ) 
     
     atm_show_viewport: BoolProperty(
         name="",
@@ -347,114 +580,75 @@ class Properties(PropertyGroup):
         update=update_prop
         )
 
-def cloud_uniforms(self, context, shader):
-    scene = context.scene
-    mytool = scene.my_tool
-    
-    shader.uniform_float("time", mytool.prop_cld_center)
-    shader.uniform_float("attinuation_clamp", 1)
-    
-    shader.uniform_float("planet_center", (0,0,-6378150 - mytool.prop_sky_altitude))
-    shader.uniform_float("planet_radius", 6378137)
-    shader.uniform_float("atmo_radius", 80000 + 6378137)
-    shader.uniform_float("altitude", mytool.prop_sky_altitude)
-    
-    shader.uniform_float("scale_height_rayleigh",7994)
-    shader.uniform_float("scale_height_mie",1200)
-    shader.uniform_float("scale_height_absorption",8000)
-    
-    shader.uniform_float("ray_intensity", mytool.prop_air)
-    shader.uniform_float("mie_intensity", mytool.prop_dust)
-    shader.uniform_float("absorption_intensity", mytool.prop_ozone)
-    
-    shader.uniform_float("cld_radius", 6000 + 1000000)
-    shader.uniform_float("cld_center", (0.0, 0.0, -1002000))
-    shader.uniform_float("cld_thickness", mytool.prop_cld_thickness)
-    
-    shader.uniform_float("cld_top_roundness", mytool.prop_cld_top_roundness)
-    shader.uniform_float("cld_btm_roundness", mytool.prop_cld_btm_roundness)
-    
-    shader.uniform_float("cld_density", mytool.prop_cld_density)
-    shader.uniform_float("cld_top_density", mytool.prop_cld_top_density)
-    shader.uniform_float("cld_btm_density", mytool.prop_cld_btm_density)
+# ---------------------------------------------------------------------------- #
+#                                   OPERATORS                                  #
+# ---------------------------------------------------------------------------- #
 
-    shader.uniform_float("cld_detail_scale", mytool.prop_detail_scale)
-    shader.uniform_float("cld_shape_scale", mytool.prop_shape_scale)
-    shader.uniform_float("cld_coverage_scale", mytool.prop_coverage_scale)
-    shader.uniform_float("cld_shape_scale2", mytool.prop_shape_scale2)
-    
-    shader.uniform_float("cld_detail_intsty", mytool.prop_detail_intsty)
-    shader.uniform_float("cld_shape_intsty", mytool.prop_shape_intsty)
-    shader.uniform_float("cld_coverage_intsty", mytool.prop_coverage_intsty)
-    #shader.uniform_float("prop_shape_intsty2", mytool.prop_shape_intsty2)
-    
-    shader.uniform_float("cld_silver_intsty", mytool.prop_silver_intsty)
-    shader.uniform_float("cld_silver_spread", mytool.prop_silver_spread)
-    shader.uniform_float("g", mytool.prop_g)
-    
-    light_dir = mathutils.Vector(
-    (math.sin(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
-    math.cos(mytool.prop_sun_rotation) * math.cos(mytool.prop_sun_elevation),
-    math.sin(mytool.prop_sun_elevation))
-    )
-    
-    light_dir.normalize()
-    
-    shader.uniform_float("light_dir", light_dir)
-    shader.uniform_float("sun_size", mytool.prop_sun_size)
-    
-    shader.uniform_sampler("noise_tex_3D_32", self.tex_noise_32_3D)
-    shader.uniform_sampler("noise_tex_3D_128", self.tex_noise_128_3D)
-    shader.uniform_sampler("noise_tex_2D_1024", self.tex_noise_1024_2D)
-    shader.uniform_sampler("blue_noise", self.tex_noise_blue_2D)
-    
+class STRATUS_OT_render(bpy.types.Operator):
+    bl_idname = "stratus.render_hrdi"
+    bl_label = "Stratus Render HRDI"
+
+    _offscreen_fbo = None
+
+    def invoke(self, context, event):
+        width = 1
+        height = 1
+
+        init_hrdi_image(width, height)
+
+        self._offscreen_fbo = setup_offscreen(self, context, width, height)
+        if not self._offscreen_fbo:
+            self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
+            return {'CANCELLED'}
+        return self.execute(context)
+
+    def execute(self, context):     
+        enable_cld = True
+        enable_atmo = True
+
+        width = 1
+        height = 1
+
+        draw_to_hrdi(self, context, enable_cld, enable_atmo, width, height)
+
+        return {'FINISHED'}
+
 class STRATUS_OT_viewport_editor(bpy.types.Operator):
     bl_idname = "stratus.viewport_editor"
     bl_label = "Stratus Viewport Editor"
 
-    img_name = "STRATUS_ENV_TEX"
-    img_width = 256#1024 * 2
-    img_height = 128#512 * 2
-
-    offscreen = None
-    
-    tex_noise_32_3D = None
-    tex_noise_128_3D = None
-    tex_noise_1024_2D = None
-    tex_noise_blue_2D = None
-    
-    shader_hrdi = None
-    batch_hrdi = None
-    
-    shader_viewport = None
-    batch_viewport = None
-
-    handle_draw = None
-    
-    is_enabled = False
+    _offscreen_fbo = None
+    _handle_draw = None
+    _is_enabled = False
 
     # manage draw handler
     @staticmethod
     def draw_callback(self, context):
         global update_hrdi
         if update_hrdi is True:
-            self.draw_to_hrdi(self, context)
+            enable_cld = True
+            enable_atmo = True
+
+            width = 1
+            height = 1
+
+            draw_to_hrdi(self, context, enable_cld, enable_atmo, width, height)
         
-        self.draw_to_viewport(self, context)
+        draw_to_viewport(self, context, enable_cld, enable_atmo)
 
     @staticmethod
     def handle_add(self, context):
-        STRATUS_OT_viewport_editor.handle_draw = bpy.types.SpaceView3D.draw_handler_add(
+        STRATUS_OT_viewport_editor._handle_draw = bpy.types.SpaceView3D.draw_handler_add(
                 self.draw_callback, (self, context),
                 'WINDOW', 'POST_VIEW',
                 )
 
     @staticmethod
     def handle_remove():
-        if STRATUS_OT_viewport_editor.handle_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(STRATUS_OT_viewport_editor.handle_draw, 'WINDOW')
+        if STRATUS_OT_viewport_editor._handle_draw is not None:
+            bpy.types.SpaceView3D.draw_handler_remove(STRATUS_OT_viewport_editor._handle_draw, 'WINDOW')
 
-        STRATUS_OT_viewport_editor.handle_draw = None
+        STRATUS_OT_viewport_editor._handle_draw = None
 
     def init_world_node_tree(self):
         C = bpy.context
@@ -474,7 +668,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         # Add Environment Texture node
         node_environment = tree_nodes.new('ShaderNodeTexEnvironment')
         # Load and assign the image to the node property
-        node_environment.image = bpy.data.images[self.img_name]
+        node_environment.image = bpy.data.images[img_name]
         node_environment.location = -300,0
 
         # Add Output node
@@ -485,157 +679,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         links = node_tree.links
         link = links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
         link = links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
-
-    def init_textures(self):
-        if self.img_name in bpy.data.images:
-            bpy.data.images.remove(bpy.data.images[self.img_name])
-            
-        bpy.data.images.new(self.img_name, self.img_width, self.img_height, alpha=True, float_buffer=True, stereo3d=False)
         
-        img = bpy.data.images[self.img_name]
-        
-        img.scale(self.img_width, self.img_height)
-        img.filepath = 'C:/Users/jake/source/blender addons/clouds/STRATUS_ENV_TEX.exr'
-        img.file_format = 'OPEN_EXR'
-        
-        # Load 32x32x32 Inverse Worly noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex32.png", check_existing=True)
-        img_buff = gpu.types.Buffer('FLOAT', 32**3 * 4, list(img.pixels[:]))
-        self.tex_noise_32_3D = gpu.types.GPUTexture((32, 32, 32), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
-        bpy.data.images.remove(img)
-        
-        # Load 128 Inverse Worly noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/noiseTex128.png", check_existing=True)
-        img_buff = gpu.types.Buffer('FLOAT', 128**3 * 4, list(img.pixels[:]))
-        self.tex_noise_128_3D = gpu.types.GPUTexture((128, 128, 128), layers=0, is_cubemap=False, format='RGBA8', data=img_buff)
-        bpy.data.images.remove(img)
-        
-        # Load 1024 coverage noise tex  
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/coverage1024.png", check_existing=True)
-        self.tex_noise_1024_2D = gpu.texture.from_image(img)
-        bpy.data.images.remove(img)
-        
-        # Load 1024 coverage noise tex
-        img = bpy.data.images.load("C:/Users/jake/source/blender addons/clouds/HDR_L_1.png", check_existing=True)
-        self.tex_noise_blue_2D = gpu.texture.from_image(img)
-        bpy.data.images.remove(img)
-        
-    def init_shaders(self):            
-        coords = (
-            (-1, +1, 0),
-            (+1, +1, 0),
-            (-1, -1, 0),
-            (+1, -1, 0))
-            
-        indices = ((0,1,2), (1,3,2))
-
-        with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.vert", 'r') as file:
-            vertex_shader = file.read()
-
-        with open("C:/Users/jake/source/blender addons/clouds/cloud_exr.frag", 'r') as file:
-            fragment_shader = file.read()
-
-        self.shader_hrdi = gpu.types.GPUShader(vertex_shader, fragment_shader, )
-        self.batch_hrdi = batch_for_shader(self.shader_hrdi, 'TRIS', {"position": coords}, indices=indices)
-        
-        coords = (
-            (-1, -1, -1), (+1, -1, -1),
-            (-1, +1, -1), (+1, +1, -1),
-            (-1, -1, +1), (+1, -1, +1),
-            (-1, +1, +1), (+1, +1, +1))
-
-        indices = (
-            (0, 1, 3), (0, 2, 3), (4,5,7), (4,6,7),
-            (0,4,5), (0,1,5), (2,0,4), (2,6,4),
-            (1,3,7), (1, 5,7), (3, 2, 6), (3, 6, 7))
-        
-        with open("C:/Users/jake/source/blender addons/clouds/cloud.vert", 'r') as file:
-            vertex_shader = file.read()
-
-        with open("C:/Users/jake/source/blender addons/clouds/cloud.frag", 'r') as file:
-            fragment_shader = file.read()
-
-        self.shader_viewport = gpu.types.GPUShader(vertex_shader, fragment_shader, )
-        self.batch_viewport = batch_for_shader(self.shader_viewport, 'TRIS', {"position": coords}, indices=indices)
-
-    @staticmethod
-    def _setup_offscreen(self, context):
-        try:
-            self.offscreen = gpu.types.GPUOffScreen(self.img_width, self.img_height, format='RGBA32F')
-        except Exception as e:
-            print(e)
-            self.offscreen = None
-
-    @staticmethod
-    def _update_offscreen(self, context):
-        context = bpy.context
-        scene = context.scene
-
-        view_matrix = scene.camera.matrix_world.inverted()
-
-        projection_matrix = scene.camera.calc_matrix_camera(
-            context.evaluated_depsgraph_get(), x=scene.render.resolution_x, y=scene.render.resolution_y)
-
-        self.offscreen.draw_view3d(
-            scene,
-            context.view_layer,
-            context.space_data,
-            context.region,
-            view_matrix,
-            projection_matrix,
-            do_color_management=True)
-
-    @staticmethod
-    def draw_to_hrdi(self, context):
-        
-        with self.offscreen.bind():
-            gpu.state.depth_test_set('NONE')
-            
-            self.shader_hrdi.bind()
-            self.shader_hrdi.uniform_float("img_size", (self.img_width, self.img_height))
-            self.shader_hrdi.uniform_int("enable_cld", 1);
-            self.shader_hrdi.uniform_int("enable_atmo", 1);
-            self.shader_hrdi.uniform_float("light_intsty", context.scene.my_tool.prop_sun_intensity * 1000000.0)
-            cloud_uniforms(self, context, self.shader_hrdi)
-            
-            self.batch_hrdi.draw(self.shader_hrdi)
-            
-        buffer = self.offscreen.texture_color.read()
-        buffer.dimensions = self.img_width * self.img_height * 4
-        bpy.data.images[self.img_name].pixels.foreach_set(buffer)
-        
-    @staticmethod
-    def draw_to_viewport(self, context):
-        
-        width = bpy.context.region.width        
-        height = bpy.context.region.height
-        
-        gpu.state.depth_test_set('LESS')
-        
-        self.shader_viewport.bind()
-        
-        view_mat = bpy.context.region_data.view_matrix
-        proj_mat = bpy.context.region_data.perspective_matrix
-        
-        inv_vp_mat = proj_mat
-        inv_vp_mat = inv_vp_mat.inverted()
-        
-        self.shader_viewport.uniform_float("projection", bpy.context.region_data.window_matrix)
-        
-        self.shader_viewport.uniform_float("inv_vp_mat", inv_vp_mat)    
-        self.shader_viewport.uniform_float("img_size", (width, height))
-        
-        self.shader_viewport.uniform_int("enable_cld", context.scene.my_tool.cld_show_viewport);
-        self.shader_viewport.uniform_int("enable_atmo", context.scene.my_tool.atm_show_viewport);
-        
-        self.shader_viewport.uniform_float("light_intsty",context.scene.my_tool.prop_sun_intensity * 10.0)
-        
-        cloud_uniforms(self, context, self.shader_viewport)
-        
-        self.batch_viewport.draw(self.shader_viewport)
-        
-        gpu.state.depth_test_set('NONE')
-
     # operator functions
     @classmethod
     def poll(cls, context):
@@ -648,21 +692,25 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
-        if STRATUS_OT_viewport_editor.is_enabled:
+        if STRATUS_OT_viewport_editor._is_enabled:
             self.cancel(context)
             return {'FINISHED'}
-        else:            
-            STRATUS_OT_viewport_editor.init_shaders(self)
-            STRATUS_OT_viewport_editor.init_textures(self)
+        else:                     
             STRATUS_OT_viewport_editor.init_world_node_tree(self)
-            STRATUS_OT_viewport_editor._setup_offscreen(self, context)
+
+            width = 1
+            height = 1
+
+            init_hrdi_image(width, height)
+
+            self._offscreen_fbo = setup_offscreen(self, context, width, height)
             
-            if not self.offscreen:
+            if not self._offscreen_fbo:
                 self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
                 return {'CANCELLED'}
 
             STRATUS_OT_viewport_editor.handle_add(self, context)
-            STRATUS_OT_viewport_editor.is_enabled = True
+            STRATUS_OT_viewport_editor._is_enabled = True
 
             if context.area:
                 context.area.tag_redraw()
@@ -673,7 +721,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
 
     def cancel(self, context):
         STRATUS_OT_viewport_editor.handle_remove()
-        STRATUS_OT_viewport_editor.is_enabled = False
+        STRATUS_OT_viewport_editor._is_enabled = False
 
         if context.area:
             context.area.tag_redraw()
@@ -705,6 +753,10 @@ class STRATUS_OT_prop_observer(bpy.types.Operator):
             self._stop = True
 
         return {'PASS_THROUGH'}
+
+# ---------------------------------------------------------------------------- #
+#                                    PANELS                                    #
+# ---------------------------------------------------------------------------- #
 
 class STRATUS_PT_cloud_panel(bpy.types.Panel):
     bl_label = "Clouds"
@@ -749,8 +801,7 @@ class STRATUS_PT_cloud_panel(bpy.types.Panel):
         layout.separator()
         layout.prop(mytool, "prop_silver_intsty")
         layout.prop(mytool, "prop_silver_spread", slider=True)
-        #layout.prop(mytool, "density_offset", slider=True)
-        #layout.prop(mytool, "g", slider=True)
+        layout.prop(mytool, "prop_g", slider=True)
         
 class STRATUS_PT_atmo_panel(bpy.types.Panel):
     bl_label = "Atmosphere"
@@ -804,3 +855,11 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+    bpy.app.handlers.frame_change_post.append(render_hrdi)
+
+    bpy.app.handlers.render_init.append(set_render_state_true)
+    bpy.app.handlers.render_cancel.append(set_render_state_false)
+    bpy.app.handlers.render_complete.append(set_render_state_false)
+
+    init_textures()
+    init_shaders()
