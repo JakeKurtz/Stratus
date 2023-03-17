@@ -24,6 +24,40 @@ from ... import globals
 from .shader_utils import new_shader
 from .general_utils import bgl_texture_from_image, get_dir
 
+def init_world_node_tree():
+    if globals.INITIALIZED_NODE_TREE is False:
+        scene = bpy.context.scene
+        prop = scene.render_props
+
+        # Get the environment node tree of the current scene
+        node_tree = scene.world.node_tree
+        nodes = node_tree.nodes
+
+        # Clear all nodes
+        nodes.clear()
+
+        # Add Background node
+        node_background = nodes.new(type='ShaderNodeBackground')
+        node_background.inputs["Strength"].default_value = prop.env_img_strength
+
+        # Add Environment Texture node
+        node_environment = nodes.new('ShaderNodeTexEnvironment')
+        # Load and assign the image to the node property
+        node_environment.image = bpy.data.images[globals.IMG_NAME]
+        node_environment.interpolation = 'Smart'
+        node_environment.location = -300,0
+
+        # Add Output node
+        node_output = nodes.new(type='ShaderNodeOutputWorld')   
+        node_output.location = 200,0
+
+        # Link all nodes
+        links = node_tree.links
+        link = links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
+        link = links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
+
+        globals.INITIALIZED_NODE_TREE = True
+
 def init_shaders():
     if globals.INITIALIZED_SHADERS is False:
         dir = get_dir()

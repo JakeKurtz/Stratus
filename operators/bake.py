@@ -21,13 +21,13 @@ import bpy
 
 from .. import globals
 from .utils.env_img_utils import ENVImage
-from .utils.init_utils import init_shaders, init_textures
-from .utils.general_utils import new_offscreen_fbo
+from .utils.init_utils import init_shaders, init_textures, init_world_node_tree
+from .utils.general_utils import new_offscreen_fbo, refresh_viewers
 from .utils.draw_utils import draw_env_img, draw_irra_map
 
-class STRATUS_OT_bake(bpy.types.Operator):
+class STRATUS_OT_bake_env_img(bpy.types.Operator):
     bl_idname = "stratus.bake_env_img"
-    bl_label = "Stratus Bake HRDI"
+    bl_label = "Stratus Bake"
 
     _offscreen_sky = None
     _offscreen_irra = None
@@ -36,11 +36,10 @@ class STRATUS_OT_bake(bpy.types.Operator):
 
     def invoke(self, context, event):
         globals.BAKE_ENV_IMG = True
-
-        # Initialize textures, if they havent already
+        # Initialize, if you havent already
         init_textures()
-        # Initialize shaders, if they havent already
         init_shaders()
+        init_world_node_tree()
 
         prop = context.scene.render_props
         size = float(prop.env_img_render_size)
@@ -55,12 +54,15 @@ class STRATUS_OT_bake(bpy.types.Operator):
             self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
             return {'CANCELLED'}
 
+        context.window_manager.modal_handler_add(self)
+
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
         if self._env_img.completed():
+            print("Bake Finished.")
+            refresh_viewers(context)
             globals.BAKE_ENV_IMG = False
-            globals.REFRESH_VIEWPORT = True
             self._env_img.save()
             self._env_img.reset()
             return {'FINISHED'}

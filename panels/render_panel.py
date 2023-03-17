@@ -30,13 +30,13 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        )
                        
-from .panel_utils import update_env_img_size
-from ..operators.render import STRATUS_OT_render
+from .panel_utils import update_env_img_size, update_env_img_strength
+from ..operators.render import STRATUS_OT_render_animation
+from ..operators.bake import STRATUS_OT_bake_env_img
+from ..operators.viewport_editor import STRATUS_OT_viewport_editor
 
 class STRATUS_RenderProperties(PropertyGroup):
     env_img_size = [
-        ('.25', ".25K", '256 x 128', '', 3),
-        ('.5', ".5K", '512 x 256', '', 0),
         ('1', "1K", '1024 x 512', '', 1),
         ('2', "2K", '2048 x 1024', '', 2),
         ('4', "4K", '4096 x 2048', '', 4),
@@ -56,8 +56,8 @@ class STRATUS_RenderProperties(PropertyGroup):
         name = "env_img_strength",
         description = "A float property",
         default = 0.1,
-        min = 0.0
-        #update=update_node_tree
+        min = 0.0,
+        update=update_env_img_strength
     ) 
 
     env_img_render_size: EnumProperty(
@@ -109,12 +109,6 @@ class STRATUS_RenderProperties(PropertyGroup):
         default="1"
     )
 
-    enable_previewer: BoolProperty(
-        name="enable_previewer",
-        description="",
-        default = True
-    )
-
 class STRATUS_PT_render_panel(bpy.types.Panel):
     bl_label = "Render Settings"
     bl_category = "Stratus"
@@ -126,13 +120,11 @@ class STRATUS_PT_render_panel(bpy.types.Panel):
         layout = self.layout
         prop = context.scene.render_props
 
-        layout.operator(STRATUS_OT_render.bl_idname, text="Render", icon="CONSOLE")
         layout.prop(prop, "env_img_strength")
-        layout.prop(prop, "enable_previewer")
 
 class STRATUS_PT_sub_render_panel(bpy.types.Panel):
     bl_parent_id = "STRATUS_PT_render_panel"
-    bl_label = "Render Settings"
+    bl_label = "Render"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -141,6 +133,11 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         prop = context.scene.render_props
+
+        layout.operator(STRATUS_OT_bake_env_img.bl_idname, text="Bake", icon="RENDER_STILL")
+        layout.operator(STRATUS_OT_render_animation.bl_idname, text="Render Animation", icon="RENDER_ANIMATION")
+
+        layout.separator()
 
         col = layout.column()
         col.label(text="Environment Texture Size")
@@ -151,7 +148,7 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
 
 class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
     bl_parent_id = "STRATUS_PT_render_panel"
-    bl_label = "Viewport Settings"
+    bl_label = "Viewport"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -160,6 +157,10 @@ class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         prop = context.scene.render_props
+
+        layout.operator(STRATUS_OT_viewport_editor.bl_idname, text="Start Viewport Editor", icon="RESTRICT_VIEW_OFF")
+
+        layout.separator()
 
         layout.prop(prop, "viewport_pixel_size")
 

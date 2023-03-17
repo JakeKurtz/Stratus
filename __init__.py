@@ -32,11 +32,8 @@ bl_info = {
 
 import bpy
 
-from .operators.utils.general_utils import bgl_texture_from_image
-from .operators.utils.shader_utils import new_shader
-
-from .operators.render import STRATUS_OT_render
-from .operators.bake import STRATUS_OT_bake
+from .operators.render import STRATUS_OT_render_animation
+from .operators.bake import STRATUS_OT_bake_env_img
 from .operators.viewport_editor import STRATUS_OT_viewport_editor
 from .operators.prop_observer import STRATUS_OT_prop_observer
 
@@ -58,7 +55,7 @@ from .panels.moon_panel import (
     STRATUS_PT_moon_panel)
 from .panels.render_panel import (
     STRATUS_RenderProperties,
-    STRATUS_OT_render,
+    STRATUS_OT_render_animation,
     STRATUS_PT_render_panel,
     STRATUS_PT_sub_render_panel,
     STRATUS_PT_sub_viewport_panel)
@@ -69,8 +66,8 @@ classes = (
     STRATUS_SunProperties, 
     STRATUS_MoonProperties, 
     STRATUS_RenderProperties,
-    STRATUS_OT_bake,
-    STRATUS_OT_render, 
+    STRATUS_OT_bake_env_img,
+    STRATUS_OT_render_animation, 
     STRATUS_OT_viewport_editor, 
     STRATUS_OT_prop_observer, 
     STRATUS_PT_cloud_panel,

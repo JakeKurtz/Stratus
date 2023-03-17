@@ -46,10 +46,12 @@ class ENVImage:
                     self._height, 
                     alpha=True, 
                     float_buffer=True)
-        
-        bpy.data.images[self._name].scale(self._width, self._height)
+
         self._offscreen = new_offscreen_fbo(self._width, self._height)
         self.set_tile_size(512)
+
+    def __del__(self):
+        self._offscreen.free()
     
     def _init_tile_props(self):
         self._grid_width = int(self._width / self._tile_size)
@@ -62,8 +64,6 @@ class ENVImage:
 
         self._width = int(1024.0 * float(size))
         self._height = int(512.0 * float(size))
-
-        bpy.data.images[self._name].scale(self._width, self._height)
 
         if self._offscreen is not None:
             self._offscreen.free()
@@ -102,4 +102,6 @@ class ENVImage:
     def save(self):
         self._img_buff = self._offscreen.texture_color.read()
         self._img_buff.dimensions = self._width * self._height * 4
+
+        bpy.data.images[self._name].scale(self._width, self._height)
         bpy.data.images[self._name].pixels.foreach_set(self._img_buff)

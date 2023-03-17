@@ -29,3 +29,12 @@ def update_prop(self, context):
 
 def update_env_img_size(self, context):
     globals.RESIZE_ENV_IMG = True
+
+def update_env_img_strength(self, context):
+    scene = bpy.context.scene
+    prop = scene.render_props
+
+    nodes = scene.world.node_tree.nodes
+  
+    node_background = nodes.get("Background")
+    node_background.inputs.get("Strength").default_value = prop.env_img_strength

@@ -22,13 +22,13 @@ from datetime import datetime
 
 from .. import globals
 from .utils.env_img_utils import ENVImage
-from .utils.init_utils import init_shaders, init_textures
+from .utils.init_utils import init_shaders, init_textures, init_world_node_tree
 from .utils.general_utils import new_offscreen_fbo
 from .utils.draw_utils import draw_env_img, draw_irra_map
 
-class STRATUS_OT_render(bpy.types.Operator):
-    bl_idname = "stratus.render_env_img"
-    bl_label = "Stratus Render HRDI"
+class STRATUS_OT_render_animation (bpy.types.Operator):
+    bl_idname = "stratus.render_animation"
+    bl_label = "Stratus Render Animation"
 
     _offscreen_sky = None
     _offscreen_irra = None
@@ -36,10 +36,10 @@ class STRATUS_OT_render(bpy.types.Operator):
     _env_img = None
 
     def invoke(self, context, event):
-        # Initialize textures, if they havent already
+        # Initialize, if you havent already
         init_textures()
-        # Initialize shaders, if they havent already
         init_shaders()
+        init_world_node_tree()
 
         prop = context.scene.render_props
         size = int(prop.env_img_render_size)

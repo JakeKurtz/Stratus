@@ -47,11 +47,51 @@ def get_dir():
     for mod in addon_utils.modules():
         if mod.bl_info['name'] == "Stratus":
             filepath = mod.__file__
-            print("FILEPATH: " + filepath)
             break
     dir = str(filepath.rsplit('\\', 1)[0])
-    print("DIR: " + dir)
     return dir
+
+def get_clip_end(context):
+    r3d = context.area.spaces.active.region_3d
+    if r3d.view_perspective == 'CAMERA':
+        obj_camera = bpy.context.scene.camera
+        clip_end = obj_camera.data.clip_end
+    else:
+        clip_end = context.area.spaces.active.clip_end
+    return clip_end
+
+
+def compute_dir(theta, phi):
+    dir = Vector(
+    (
+        math.sin(phi) * math.cos(theta),
+        math.cos(phi) * math.cos(theta),
+        math.sin(theta)
+    ))
+    dir.normalize()
+    return dir
+
+def look_at(eye, target, up):
+
+    mz = Vector((eye[0]-target[0], eye[1]-target[1], eye[2]-target[2])) # inverse line of sight
+    mz.normalize()
+    
+    mx = up.cross(mz)
+    mx.normalize()
+
+    my = mz.cross(mx)
+    my.normalize()
+
+    tx =  mx.dot(eye)
+    ty =  my.dot(eye)
+    tz =  mz.dot(eye)
+
+    return Matrix((
+        (mx[0], my[0], mz[0], 0), 
+        (mx[1], my[1], mz[1], 0), 
+        (mx[2], my[2], mz[2], 0), 
+        (tx,    ty,    tz,    1)))
+
 
 def new_env_img_image(img_name, width, height):
     if img_name not in bpy.data.images:
@@ -105,37 +145,6 @@ def bgl_texture_from_image(image, dim, bindcode):
 
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, 0)
     bpy.data.images.remove(image)
-
-def compute_dir(theta, phi):
-    dir = Vector(
-    (
-        math.sin(phi) * math.cos(theta),
-        math.cos(phi) * math.cos(theta),
-        math.sin(theta)
-    ))
-    dir.normalize()
-    return dir
-
-def look_at(eye, target, up):
-
-    mz = Vector((eye[0]-target[0], eye[1]-target[1], eye[2]-target[2])) # inverse line of sight
-    mz.normalize()
-    
-    mx = up.cross(mz)
-    mx.normalize()
-
-    my = mz.cross(mx)
-    my.normalize()
-
-    tx =  mx.dot(eye)
-    ty =  my.dot(eye)
-    tz =  mz.dot(eye)
-
-    return Matrix((
-        (mx[0], my[0], mz[0], 0), 
-        (mx[1], my[1], mz[1], 0), 
-        (mx[2], my[2], mz[2], 0), 
-        (tx,    ty,    tz,    1)))
 
 def bgl_uniform_sampler(shader, name, texture, dim, slot):
 
