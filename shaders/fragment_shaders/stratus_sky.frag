@@ -381,12 +381,6 @@ float phase_mie(float mu, float G)
     return (3.0 * (1.0 - sqr_G) * (1.0 + (mu*mu))) / (8.0 * M_PI * (2.0 + sqr_G) * pow((1.0 + sqr_G - 2.0 * G * mu), 1.5));
 }
 
-float phase_mie_2(float mu, float G)
-{
-    float sqr_G = G*G;
-    return M_1_4PI * ((1.0 - sqr_G) / pow((1.0 + sqr_G-(2.0 * G * mu)), 1.5));
-}
-
 /* ------------------------ Atmosphere volume models ------------------------ */
 
 float density_rayleigh(float height)
@@ -465,7 +459,7 @@ vec3 ray_optical_depth(Ray ray)
     return optical_depth * ray_length;
 }
 
-vec3 atmo_raymarch(Ray ray, Light light, float ls) 
+vec3 atmo_raymarch(Ray ray, Light light) 
 {
     /* this code computes single-inscattering along a ray through the atmosphere */
     vec3 ray_end = atmosphere_intersection(ray);
@@ -488,11 +482,8 @@ vec3 atmo_raymarch(Ray ray, Light light, float ls)
     vec3 density_scale = vec3(rayleigh_density, mie_density, ozone_density);
 
     /* the density and in-scattering of each segment is evaluated at its middle */
-    //vec3 pos = ray.pos + 0.5 * segment;
-    vec3 pos = ray.pos;// + 0.5 * segment;
-    float march_dst = 0.0;
+    vec3 pos = ray.pos; float march_dst = 0.0;
     for (int i = 0; i < 64; i++)
-    //for (float march_dst = 0.0; march_dst < ray_length; march_dst += segment_length)
     {
         pos = ray.pos + march_dst * ray.dir;
 
@@ -509,7 +500,6 @@ vec3 atmo_raymarch(Ray ray, Light light, float ls)
         /* if the Earth isn't in the way, evaluate inscattering from the sun */
         Ray light_ray = Ray(pos, light.dir);
         if (!surface_intersection(light_ray)) {
-
             vec3 light_optical_depth = density_scale * ray_optical_depth(light_ray);
             vec3 total_optical_depth = optical_depth + light_optical_depth;
             
@@ -522,17 +512,15 @@ vec3 atmo_raymarch(Ray ray, Light light, float ls)
                 float attenuation = exp(-reduce_add(extinction_density));
                 vec3 scattering_density = density * vec3(rayleigh_coeff[wl], mie_coeff, 0.0);
 
-                r_spectrum[wl] += attenuation * reduce_add(phase_function * scattering_density) * irradiance[wl] * ls * segment_length;
+                r_spectrum[wl] += attenuation * reduce_add(phase_function * scattering_density) * irradiance[wl] * segment_length;
             }
-            
         }
-        //pos += segment;
         march_dst += segment_length;
     }
     return spec_to_rgb(r_spectrum);
 }
 
-vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end, float ls) 
+vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end) 
 {
     /* this code computes single-inscattering along a ray through the atmosphere */
     float ray_length = distance(ray.pos, ray_end);
@@ -554,11 +542,8 @@ vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end, float ls)
     vec3 density_scale = vec3(rayleigh_density, mie_density, ozone_density);
 
     /* the density and in-scattering of each segment is evaluated at its middle */
-    //vec3 pos = ray.pos + 0.5 * segment;
-    vec3 pos = ray.pos;// + 0.5 * segment;
-    float march_dst = 0.0;
+    vec3 pos = ray.pos; float march_dst = 0.0;
     for (int i = 0; i < 64; i++)
-    //for (float march_dst = 0.0; march_dst < ray_length; march_dst += segment_length)
     {
         pos = ray.pos + march_dst * ray.dir;
 
@@ -588,16 +573,13 @@ vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end, float ls)
                 float attenuation = exp(-reduce_add(extinction_density));
                 vec3 scattering_density = density * vec3(rayleigh_coeff[wl], mie_coeff, 0.0);
 
-                r_spectrum[wl] += attenuation * reduce_add(phase_function * scattering_density) * irradiance[wl] * ls * segment_length;
+                r_spectrum[wl] += attenuation * reduce_add(phase_function * scattering_density) * irradiance[wl] * segment_length;
             }
-            
         }
-        //pos += segment;
         march_dst += segment_length;
     }
     return spec_to_rgb(r_spectrum);
 }
-
 
 vec3 sun_radiation(Ray ray, float solid_angle)
 {
@@ -623,30 +605,6 @@ vec3 sun_radiation(Ray ray, float solid_angle)
     }
 }
 
-vec3 moon_radiation(Ray ray, float solid_angle)
-{
-    vec3 optical_depth = ray_optical_depth(ray);
-
-    if (!surface_intersection(ray)) {
-        float r_spectrum[num_wavelengths];
-        for (int wl = 0; wl < num_wavelengths; wl++) {
-            r_spectrum[wl] = 0.0;
-        }
-
-        /* compute final spectrum */
-        for (int i = 0; i < num_wavelengths; i++) {
-            /* combine spectra and the optical depth into transmittance */
-            float transmittance = rayleigh_coeff[i] * optical_depth.x * rayleigh_density +
-                                    1.11f * mie_coeff * optical_depth.y * mie_density;
-            r_spectrum[i] = irradiance[i] * 0.0034 * exp(-transmittance) / solid_angle;
-        }
-
-        return spec_to_rgb(r_spectrum);
-    } else {
-        return vec3(0.0);
-    }
-}
-
 out vec4 fragColor;
 
 void main() {
@@ -657,8 +615,8 @@ void main() {
     ray.dir = sample_spherical_direction(uv);
  
     vec4 atmo_color = vec4(0.0);
-    atmo_color += (enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun, 1.0),1.0) : vec4(0.0);
-    atmo_color += (enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon, 0.0000025),1.0) : vec4(0.0); 
+    atmo_color += (enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun),1.0) : vec4(0.0);
+    atmo_color += (enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon),1.0) * 0.000025 : vec4(0.0); 
 
     fragColor = atmo_color;
 }

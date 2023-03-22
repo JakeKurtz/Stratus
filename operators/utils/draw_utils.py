@@ -23,6 +23,7 @@ import math
 import bgl
 
 from mathutils import Matrix, Vector
+from bl_math import lerp
 
 from ... import globals
 from .general_utils import compute_dir, bgl_uniform_sampler, get_clip_end, look_at
@@ -111,25 +112,21 @@ def atmo_uniforms(shader):
 def cloud_uniforms(shader):
     prop = bpy.context.scene.cloud_props
 
-    d = prop.cld_horizon_dst
-    h = prop.cld_horizon_h
+    d = 60000.0 # (m)
+    h = 1000.0 # (m)
     cld_domain_radius = math.pow((2.0*d),2.0) / (8.0 * h) + h * 0.5
     cld_domain_center = Vector((0.0, 0.0, h-cld_domain_radius))
+    cld_domain_thickness = 15000.0 # (m)
 
-    # TODO: bake this shit
-    shader.uniform_float("cld_top_roundness", prop.cld_top_roundness)
-    shader.uniform_float("cld_btm_roundness", prop.cld_btm_roundness)
-    shader.uniform_float("cld_top_density", prop.cld_top_density)
-    shader.uniform_float("cld_btm_density", prop.cld_btm_density)
-    #shader.uniform_float("noise_scales", prop.noise_scales)
-    shader.uniform_float("coverage_interpo", prop.coverage_interpo)
-    # ---------------------
+    shader.uniform_float("cld_G", prop.cld_G)
 
-    shader.uniform_float("cld_ap_intsty", 500000*prop.cld_ap_intsty)
+    ap_intsty = 500000.0 * lerp(0.2, 0.01, prop.cld_ap_intsty)
+
+    shader.uniform_float("cld_ap_intsty", ap_intsty)
     shader.uniform_float("cld_ambient_intsty", prop.cld_ambient_intsty)
 
     shader.uniform_float("cld_domain_min_radius", cld_domain_radius)
-    shader.uniform_float("cld_domain_max_radius", cld_domain_radius + 15000)
+    shader.uniform_float("cld_domain_max_radius", cld_domain_radius + cld_domain_thickness)
     shader.uniform_float("cld_domain_center", cld_domain_center)
 
     # ---------------------------------------------------------------------------- #
@@ -141,6 +138,8 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_0_detail_intsty",     prop.cld_0_detail_intsty)
     shader.uniform_float("cld_0_shape_intsty",      prop.cld_0_shape_intsty)
     shader.uniform_float("cld_0_coverage_intsty",   prop.cld_0_coverage_intsty)
+
+    shader.uniform_float("cld_0_coverage_shape",    prop.cld_0_coverage_shape)
 
     shader.uniform_float("cld_0_detail_offset",     prop.cld_0_detail_offset)
     shader.uniform_float("cld_0_shape_offset",      prop.cld_0_shape_offset)
@@ -165,6 +164,8 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_1_shape_intsty",      prop.cld_1_shape_intsty)
     shader.uniform_float("cld_1_coverage_intsty",   prop.cld_1_coverage_intsty)
 
+    shader.uniform_float("cld_1_coverage_shape",    prop.cld_1_coverage_shape)
+
     shader.uniform_float("cld_1_detail_offset",     prop.cld_1_detail_offset)
     shader.uniform_float("cld_1_shape_offset",      prop.cld_1_shape_offset)
     shader.uniform_float("cld_1_coverage_offset",   prop.cld_1_coverage_offset)
@@ -179,9 +180,9 @@ def cloud_uniforms(shader):
     
     # ---------------------------------------------------------------------------- #
     
-    bgl_uniform_sampler(shader, "noise_tex_3D_32", globals.NOISE_TEXTURES[0], 3, 0)
+    bgl_uniform_sampler(shader, "noise_tex_3D_64", globals.NOISE_TEXTURES[0], 3, 0)
     bgl_uniform_sampler(shader, "noise_tex_3D_128", globals.NOISE_TEXTURES[1], 3, 1)
-    bgl_uniform_sampler(shader, "noise_tex_2D_1024", globals.NOISE_TEXTURES[2], 2, 2)
+    bgl_uniform_sampler(shader, "noise_tex_2D_2048", globals.NOISE_TEXTURES[2], 2, 2)
     bgl_uniform_sampler(shader, "blue_noise", globals.NOISE_TEXTURES[3], 2, 3)
 
     bgl_uniform_sampler(shader, "moon_albedo_tex", globals.MOON_TEXTURES[0], 2, 4)
@@ -243,6 +244,7 @@ def draw_env_img(env_img, irra_tex, render_context):
         enable_cld = cloud_prop.cld_show_viewport
         enable_moon = moon_prop.moon_show_viewport
         enable_sun = sun_prop.sun_show_viewport
+        enable_bicubic = False
     elif render_context == 'RENDER':
         cld_max_steps = render_prop.max_steps_render
         cld_max_light_steps = render_prop.max_light_steps_render
@@ -250,6 +252,7 @@ def draw_env_img(env_img, irra_tex, render_context):
         enable_cld = cloud_prop.cld_show_render
         enable_moon = moon_prop.moon_show_render
         enable_sun = sun_prop.sun_show_render
+        enable_bicubic = render_prop.enable_bicubic
 
     tile_pos = env_img.get_tile_pos()
     tile_size = env_img.get_tile_size()
@@ -271,6 +274,8 @@ def draw_env_img(env_img, irra_tex, render_context):
         _shader.uniform_int("cld_max_light_steps", cld_max_light_steps)
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
+
+        _shader.uniform_bool("enable_bicubic", enable_bicubic)
 
         _shader.uniform_bool("enable_atm", enable_atm)
         _shader.uniform_bool("enable_cld", enable_cld)
@@ -319,6 +324,8 @@ def pre_draw_viewport(self, context, irra_tex):
         _shader.uniform_int("cld_max_light_steps", render_prop.max_light_steps_viewport)
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
+
+        _shader.uniform_bool("enable_bicubic", False)
 
         _shader.uniform_bool("enable_atm", atmo_prop.atm_show_viewport)
         _shader.uniform_bool("enable_cld", cloud_prop.cld_show_viewport)

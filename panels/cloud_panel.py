@@ -43,15 +43,6 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
     )
 
-    coverage_interpo: FloatProperty(
-        name = "coverage_interpo",
-        description = "A float property",
-        default = 1.0,
-        max = 1.0,
-        min = 0.0,
-        update=update_prop
-        ) 
-
     cld_show_viewport: BoolProperty(
         name="",
         description="A bool property",
@@ -66,6 +57,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_ap_intsty: FloatProperty(
+        name = "Atmospheric Perspective Intensity",
+        description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
+        default=0.1,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+
     cld_ambient_intsty: FloatProperty(
         name = "cld_ambient_intsty",
         description = "A float property",
@@ -73,63 +73,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         max = 100.0,
         min = 0.0,
         update=update_prop
-        )           
+        )    
         
-    cld_horizon_dst: FloatProperty(
-        name = "cld_horizon_dst",
-        description = "A float property",
-        default = 10000.0,
-        max = 100000.0,
-        step = 1000,
-        min = 0.0,
-        update=update_prop
-        )      
-        
-    cld_horizon_h: FloatProperty(
-        name = "cld_horizon_h",
-        description = "A float property",
-        default = 6500.0,
-        max = 100000.0,
-        step = 1000,
-        min = 0.0,
-        update=update_prop
-        )  
-
-    cld_top_roundness: FloatProperty(
-        name = "cld_top_roundness",
-        description = "A float property",
-        default = 0.05,
-        max = 1.0,
-        min = 0.0,
-        update=update_prop
-        )
-
-    cld_btm_roundness: FloatProperty(
-        name = "cld_btm_roundness",
+    cld_G: FloatProperty(
+        name = "G",
         description = "A float property",
         default = 0.0,
         max = 1.0,
-        min = 0.0,
+        min = -1.0,
         update=update_prop
-        )    
-
-    cld_top_density: FloatProperty(
-        name = "cld_top_density",
-        description = "A float property",
-        default = 1.0,
-        max = 1.0,
-        min = 0.0,
-        update=update_prop
-        )  
-
-    cld_btm_density: FloatProperty(
-        name = "cld_btm_density",
-        description = "A float property",
-        default = 0.5,
-        max = 1.0,
-        min = 0.0,
-        update=update_prop
-        )
+        )           
 
 # ------------------------- Cloud Layer 0 Properties ------------------------- #
 
@@ -203,6 +156,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         max = 1.0,
         update=update_prop
         )
+    
+    cld_0_coverage_shape: FloatProperty(
+        name = "Coverage Shape",
+        description = "A float property",
+        default = 1.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        ) 
         
     cld_0_rotation: FloatProperty(
         name = "Rotation",
@@ -210,7 +172,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         default = 0.0,
         subtype="ANGLE",
         update=update_prop
-    )
+        )
 
     cld_0_coverage_offset: FloatVectorProperty(
         name = "Coverage Noise Offset",
@@ -313,13 +275,22 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_1_coverage_shape: FloatProperty(
+        name = "Coverage Shape",
+        description = "A float property",
+        default = 1.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        ) 
+
     cld_1_rotation: FloatProperty(
         name = "Rotation",
         description = "",
         default = 0.0,
         subtype="ANGLE",
         update=update_prop
-    )
+        )
 
     cld_1_coverage_offset: FloatVectorProperty(
         name = "Coverage Noise Offset",
@@ -349,21 +320,6 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         ) 
 
-    cld_ap_intsty: FloatProperty(
-        name = "Atmospheric Perspective Intensity",
-        description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
-        default=0.2,
-        update=update_prop,
-        min= 0.0,
-        max = 100.0
-        )
-
-    cld_coverage_map: PointerProperty(
-        name="Image", 
-        type=bpy.types.Image,
-        #update=update_cld_coverage_map
-        )
-
 class STRATUS_PT_cloud_panel(Panel):
     bl_label = "Clouds"
     bl_category = "Stratus"
@@ -386,16 +342,9 @@ class STRATUS_PT_cloud_panel(Panel):
 
         col = layout.column()
         col.label(text="Lighting")
-        col.prop(prop, "cld_ap_intsty")
-        col.prop(prop, "cld_top_roundness")
-        col.prop(prop, "cld_btm_roundness")
-        col.prop(prop, "cld_top_density")
-        col.prop(prop, "cld_btm_density")
+        col.prop(prop, "cld_ap_intsty", slider=True)
         col.prop(prop, "cld_ambient_intsty")
-        col.prop(prop, "cld_horizon_dst")
-        col.prop(prop, "cld_horizon_h")
-        col.prop(prop, "noise_scales")
-        col.prop(prop, "coverage_interpo")
+        col.prop(prop, "cld_G")
 
 class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
@@ -431,6 +380,7 @@ class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
         grid_1.prop(prop, "cld_0_detail_intsty", slider=True)
         grid_1.prop(prop, "cld_0_shape_intsty", slider=True)
         grid_1.prop(prop, "cld_0_coverage_intsty", slider=True)
+        grid_1.prop(prop, "cld_0_coverage_shape", slider=True)
         
 class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
@@ -466,6 +416,7 @@ class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
         grid_1.prop(prop, "cld_1_detail_intsty", slider=True)
         grid_1.prop(prop, "cld_1_shape_intsty", slider=True)
         grid_1.prop(prop, "cld_1_coverage_intsty", slider=True)
+        grid_1.prop(prop, "cld_1_coverage_shape", slider=True)
 
 class STRATUS_PT_sub_cloud_layer_0_noise_offsets_panel(Panel):
     bl_parent_id = "STRATUS_PT_sub_cloud_layer_0_panel"

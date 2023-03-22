@@ -46,11 +46,10 @@ class STRATUS_RenderProperties(PropertyGroup):
     ]
 
     tile_size = [
-        ('0', "256", '256 x 256', '', 256),
-        ('1', "512", '512 x 512', '', 512),
-        ('2', "1024", '1024 x 1024', '', 1024),
-        ('3', "2048", '2048 x 2048', '', 2048),
-        ('4', "4096", '4096 x 4096', '', 4096),
+        ('0', "512", '512 x 512', '', 512),
+        ('1', "1024", '1024 x 1024', '', 1024),
+        ('2', "2048", '2048 x 2048', '', 2048),
+        ('3', "4096", '4096 x 4096', '', 4096),
     ]
     
     pixel_size = [
@@ -117,6 +116,12 @@ class STRATUS_RenderProperties(PropertyGroup):
         default="1"
     )
 
+    enable_bicubic: BoolProperty(
+        name = "Use Bicubic Sampling",
+        description="Preserves fine details when magnifying textures. Requires 8x more samples than bilinear sampling.",
+        default = False,
+    )
+
     enable_tiling: BoolProperty(
         name = "Use Tiling",
         description="Render high resolution images in tiles to reduce memory usage, using the specified tile size.",
@@ -170,6 +175,8 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
         col_1 = layout.column()
         col_1.prop(prop, "render_tile_size", text="Tile Size")
         col_1.enabled = prop.enable_tiling
+
+        layout.prop(prop, "enable_bicubic")
         
         layout.separator()
 

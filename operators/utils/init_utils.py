@@ -134,7 +134,7 @@ def init_textures(self):
         img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_64.png", check_existing=True)
         bgl_texture_from_image(img, (64, 64, 64), globals.NOISE_TEXTURES[0])
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_128.png", check_existing=True)
+        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_128.png", check_existing=True)
         bgl_texture_from_image(img, (128, 128, 128), globals.NOISE_TEXTURES[1])
         
         img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_2048.png", check_existing=True)
