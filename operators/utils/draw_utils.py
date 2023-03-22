@@ -20,6 +20,7 @@
 import bpy
 import gpu
 import math
+import bgl
 
 from mathutils import Matrix, Vector
 
@@ -29,7 +30,7 @@ from .general_utils import compute_dir, bgl_uniform_sampler, get_clip_end, look_
 def sun_uniforms(shader):
     prop = bpy.context.scene.sun_props
 
-    shader.uniform_int("enable_sun_as_light", prop.sun_enable_light)
+    shader.uniform_bool("enable_sun_as_light", prop.sun_enable_light)
 
     shader.uniform_float("sun_half_angular", prop.sun_size / 2.0)
     shader.uniform_float("sun.dir", compute_dir(prop.sun_elevation, prop.sun_rotation))
@@ -89,7 +90,7 @@ def moon_uniforms(shader):
         moon_phase_dir = rot_mat @ inv_moon_dir
         moon_phase_dir.normalize()
 
-    shader.uniform_int("enable_moon_as_light", moon_prop.moon_enable_light)
+    shader.uniform_bool("enable_moon_as_light", moon_prop.moon_enable_light)
     shader.uniform_float("moon_phase_dir", moon_phase_dir)
     shader.uniform_float("moon_half_angular", moon_prop.moon_size/2.0)
 
@@ -120,6 +121,8 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_btm_roundness", prop.cld_btm_roundness)
     shader.uniform_float("cld_top_density", prop.cld_top_density)
     shader.uniform_float("cld_btm_density", prop.cld_btm_density)
+    #shader.uniform_float("noise_scales", prop.noise_scales)
+    shader.uniform_float("coverage_interpo", prop.coverage_interpo)
     # ---------------------
 
     shader.uniform_float("cld_ap_intsty", 500000*prop.cld_ap_intsty)
@@ -130,7 +133,7 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_domain_center", cld_domain_center)
 
     # ---------------------------------------------------------------------------- #
-    shader.uniform_int("enable_cld_0",              prop.cld_0_enable)
+    shader.uniform_bool("enable_cld_0",             prop.cld_0_enable)
     shader.uniform_float("cld_0_density",           prop.cld_0_density)
     shader.uniform_float("cld_0_size",              prop.cld_0_size)
     shader.uniform_float("cld_0_radius",            prop.cld_0_height + cld_domain_radius)
@@ -152,7 +155,7 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_0_transform", cld_0_transform)
     # ---------------------------------------------------------------------------- #
 
-    shader.uniform_int("enable_cld_1",              prop.cld_1_enable)
+    shader.uniform_bool("enable_cld_1",              prop.cld_1_enable)
 
     shader.uniform_float("cld_1_density",           prop.cld_1_density)
     shader.uniform_float("cld_1_size",              prop.cld_1_size)
@@ -175,7 +178,7 @@ def cloud_uniforms(shader):
     shader.uniform_float("cld_1_transform", cld_1_transform)
     
     # ---------------------------------------------------------------------------- #
-
+    
     bgl_uniform_sampler(shader, "noise_tex_3D_32", globals.NOISE_TEXTURES[0], 3, 0)
     bgl_uniform_sampler(shader, "noise_tex_3D_128", globals.NOISE_TEXTURES[1], 3, 1)
     bgl_uniform_sampler(shader, "noise_tex_2D_1024", globals.NOISE_TEXTURES[2], 2, 2)
@@ -207,14 +210,14 @@ def draw_irra_map(fbo_0, fbo_1, render_context):
 
         atmo_uniforms(_shader)
 
-        _shader.uniform_int("enable_moon", enable_moon)
-        _shader.uniform_int("enable_sun", enable_sun)
+        _shader.uniform_bool("enable_moon", enable_moon)
+        _shader.uniform_bool("enable_sun", enable_sun)
 
         _shader.uniform_float("sun.dir", compute_dir(sun_prop.sun_elevation, sun_prop.sun_rotation))
-        _shader.uniform_int("enable_sun_as_light", sun_prop.sun_enable_light)
+        _shader.uniform_bool("enable_sun_as_light", sun_prop.sun_enable_light)
 
         _shader.uniform_float("moon.dir", compute_dir(moon_prop.moon_elevation, moon_prop.moon_rotation))
-        _shader.uniform_int("enable_moon_as_light", moon_prop.moon_enable_light)
+        _shader.uniform_bool("enable_moon_as_light", moon_prop.moon_enable_light)
         
         globals.BATCH["sky"].draw(_shader)
     
@@ -254,24 +257,25 @@ def draw_env_img(env_img, irra_tex, render_context):
     offscreen = env_img.get_offscreen()
 
     with offscreen.bind():
+        if env_img.use_tiling():
+            gpu.state.viewport_set(tile_pos[0]*tile_size, tile_pos[1]*tile_size, tile_size, tile_size)
 
-        gpu.state.viewport_set(tile_pos[0]*tile_size, tile_pos[1]*tile_size, tile_size, tile_size)
         gpu.state.depth_test_set('NONE')
 
         _shader = globals.SHADER["env_img"]
 
         _shader.bind()
-
+        
         _shader.uniform_float("img_size", img_size)
         _shader.uniform_int("cld_max_steps", cld_max_steps)
         _shader.uniform_int("cld_max_light_steps", cld_max_light_steps)
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
 
-        _shader.uniform_int("enable_atm", enable_atm)
-        _shader.uniform_int("enable_cld", enable_cld)
-        _shader.uniform_int("enable_moon", enable_moon)
-        _shader.uniform_int("enable_sun", enable_sun)
+        _shader.uniform_bool("enable_atm", enable_atm)
+        _shader.uniform_bool("enable_cld", enable_cld)
+        _shader.uniform_bool("enable_moon", enable_moon)
+        _shader.uniform_bool("enable_sun", enable_sun)
 
         atmo_uniforms(_shader)
         cloud_uniforms(_shader)
@@ -285,7 +289,6 @@ def draw_env_img(env_img, irra_tex, render_context):
     env_img.increment_tile()
 
 def pre_draw_viewport(self, context, irra_tex):
-
     cloud_prop = context.scene.cloud_props
     atmo_prop = context.scene.atmo_props 
     sun_prop = context.scene.sun_props  
@@ -317,10 +320,10 @@ def pre_draw_viewport(self, context, irra_tex):
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
 
-        _shader.uniform_int("enable_atm", atmo_prop.atm_show_viewport)
-        _shader.uniform_int("enable_cld", cloud_prop.cld_show_viewport)
-        _shader.uniform_int("enable_moon", moon_prop.moon_show_viewport)
-        _shader.uniform_int("enable_sun", sun_prop.sun_show_viewport)
+        _shader.uniform_bool("enable_atm", atmo_prop.atm_show_viewport)
+        _shader.uniform_bool("enable_cld", cloud_prop.cld_show_viewport)
+        _shader.uniform_bool("enable_moon", moon_prop.moon_show_viewport)
+        _shader.uniform_bool("enable_sun", sun_prop.sun_show_viewport)
 
         atmo_uniforms(_shader)
         cloud_uniforms(_shader)

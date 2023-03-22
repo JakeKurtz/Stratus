@@ -44,6 +44,14 @@ class STRATUS_RenderProperties(PropertyGroup):
         ('16', "16K", '16384 x 8192', '', 16),
         ('24', "24K", '24576 x 12288', '', 24),
     ]
+
+    tile_size = [
+        ('0', "256", '256 x 256', '', 256),
+        ('1', "512", '512 x 512', '', 512),
+        ('2', "1024", '1024 x 1024', '', 1024),
+        ('3', "2048", '2048 x 2048', '', 2048),
+        ('4', "4096", '4096 x 4096', '', 4096),
+    ]
     
     pixel_size = [
         ('1', "1x", 'Render at full resolution', '', 1),
@@ -109,6 +117,19 @@ class STRATUS_RenderProperties(PropertyGroup):
         default="1"
     )
 
+    enable_tiling: BoolProperty(
+        name = "Use Tiling",
+        description="Render high resolution images in tiles to reduce memory usage, using the specified tile size.",
+        default = True,
+    )
+
+    render_tile_size: EnumProperty(
+        name = "Tile Size",
+        items=tile_size,
+        description="Tile Size",
+        default="2"
+    )
+
 class STRATUS_PT_render_panel(bpy.types.Panel):
     bl_label = "Render Settings"
     bl_category = "Stratus"
@@ -139,9 +160,18 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
 
         layout.separator()
 
-        col = layout.column()
-        col.label(text="Environment Texture Size")
-        col.prop(prop, "env_img_render_size", text="")
+        col_0 = layout.column()
+        col_0.label(text="Environment Texture Size")
+        col_0.prop(prop, "env_img_render_size")
+
+        layout.separator()
+
+        layout.prop(prop, "enable_tiling")
+        col_1 = layout.column()
+        col_1.prop(prop, "render_tile_size", text="Tile Size")
+        col_1.enabled = prop.enable_tiling
+        
+        layout.separator()
 
         layout.prop(prop, "max_steps_render")
         layout.prop(prop, "max_light_steps_render")
@@ -164,9 +194,13 @@ class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
 
         layout.prop(prop, "viewport_pixel_size")
 
+        layout.separator()
+
         col = layout.column()
         col.label(text="Environment Texture Size")
         col.prop(prop, "env_img_viewport_size", text="")
+
+        layout.separator()
 
         layout.prop(prop, "max_steps_viewport")
         layout.prop(prop, "max_light_steps_viewport")

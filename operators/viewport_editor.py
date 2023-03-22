@@ -18,11 +18,8 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
-import gpu
 import bgl
 import ctypes
-
-from mathutils import Matrix
 
 from .. import globals
 from .utils.env_img_utils import ENVImage
@@ -88,12 +85,12 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
 
     @staticmethod
     def _handle_add(self, context):
-        self._handle_pre_draw = bpy.types.SpaceView3D.draw_handler_add(
+        self._handle_post_draw = bpy.types.SpaceView3D.draw_handler_add(
                 self._post_draw_callback, (self, context),
                 'WINDOW', 'POST_VIEW',
                 )
 
-        self._handle_post_draw = bpy.types.SpaceView3D.draw_handler_add(
+        self._handle_pre_draw = bpy.types.SpaceView3D.draw_handler_add(
                 self._pre_draw_callback, (self, context),
                 'WINDOW', 'PRE_VIEW',
                 )
@@ -131,16 +128,16 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         if STRATUS_OT_viewport_editor._is_enabled:
             return {'FINISHED'}
         else:
-            # Initialize, if you havent already
-            init_textures()
-            init_shaders()
-            init_world_node_tree()
-
             prop = context.scene.render_props
             size = float(prop.env_img_viewport_size)
 
             self._env_img = ENVImage(globals.IMG_NAME)
             self._env_img.set_size(size)
+
+            # Initialize, if you havent already
+            init_textures(self)
+            init_shaders(self)
+            init_world_node_tree(self)
 
             self._monitor_width = ctypes.windll.user32.GetSystemMetrics(0)
             self._monitor_height = ctypes.windll.user32.GetSystemMetrics(1)
@@ -155,7 +152,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
             bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
             
             if not (self._offscreen_viewport and self._offscreen_sky and self._offscreen_irra):
-                self.report({'ERROR'}, "Error initializing offscreen buffer. More details in the console")
+                self.report({'ERROR'}, "STRATUS: error initializing offscreen buffer. More details in the console")
                 return {'CANCELLED'}
 
             STRATUS_OT_viewport_editor._handle_add(self, context)

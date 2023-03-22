@@ -29,7 +29,6 @@ def refresh_viewers(context):
     # Flip the shading type, which force Cycles to update its textures.
     if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
         wm = bpy.data.window_managers['WinMan']
-        #wm = context.window_manager
         for win in wm.windows :
             for area in win.screen.areas :
                 if area.type=='VIEW_3D' :
@@ -120,28 +119,30 @@ def bgl_texture_from_image(image, dim, bindcode):
 
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
+
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-
+        
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_BASE_LEVEL, 0)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAX_LEVEL, 0)
-                
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, dim[0], dim[1], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+            
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA16F, dim[0], dim[1], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
 
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
     elif len(dim) == 3:
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, bindcode)
-
+        
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_REPEAT)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
+
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
 
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_BASE_LEVEL, 0)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAX_LEVEL, 0)
-
-        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA, dim[0], dim[1], dim[2], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+    
+        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA16F, dim[0], dim[1], dim[2], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
 
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, 0)
     bpy.data.images.remove(image)

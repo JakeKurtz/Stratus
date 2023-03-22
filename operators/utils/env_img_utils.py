@@ -32,6 +32,8 @@ class ENVImage:
     _tile_id = 0
     _nmb_of_tiles = 0
 
+    _tiling_enabled = True
+
     _offscreen = None
     _name = None
 
@@ -74,6 +76,16 @@ class ENVImage:
     def get_size(self):
         return (self._width, self._height)
 
+    def enable_tiling(self):
+        self._tiling_enabled = True
+
+    def disable_tiling(self):
+        self._tiling_enabled = False
+
+    def use_tiling(self):
+        valid_tile_size = (self._tile_size <= self._width and self._tile_size <= self._height)
+        return valid_tile_size and self._tiling_enabled
+
     def set_tile_size(self, tile_size):
         self._tile_size = tile_size
         self._init_tile_props()
@@ -82,9 +94,12 @@ class ENVImage:
         return self._tile_size
 
     def get_tile_pos(self):
-        tile_x = int(self._tile_id % self._grid_width)
-        tile_y = int(self._tile_id / self._grid_width)
-        return (tile_x, tile_y)
+        if (self.use_tiling()):
+            tile_x = int(self._tile_id % self._grid_width)
+            tile_y = int(self._tile_id / self._grid_width)
+            return (tile_x, tile_y)
+        else:
+            return (0,0)
 
     def get_offscreen(self):
         return self._offscreen
@@ -94,7 +109,10 @@ class ENVImage:
             self._tile_id += 1
 
     def completed(self):
-        return (self._tile_id >= self._nmb_of_tiles)
+        if self.use_tiling():
+            return (self._tile_id >= self._nmb_of_tiles)
+        else:
+            return True
     
     def reset(self):
         self._tile_id = 0

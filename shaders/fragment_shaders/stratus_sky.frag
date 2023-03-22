@@ -55,17 +55,99 @@ float remap(float v, float l1, float h1, float l2, float h2)
     return l2 + (v - l1) * (h2 - l2) / (h1 - l1);
 }
 
-vec2 rndC(in vec2 uv)
+vec4 tex_sample(sampler2D tex, vec2 uv)
 {
-    uv = uv + 0.5f;
-    vec2 iuv = floor( uv );
-    vec2 fuv = fract( uv );
-    
-    // * insert your interpolation primitive operation here *
-	//uv = iuv + fuv*fuv*(3.0f-2.0f*fuv); // smoothstep
-    uv = iuv + fuv*fuv*fuv*(fuv*(fuv*6.0f-15.0f)+10.0f); // quintic
-    
-	return(uv - 0.5f);  // returns in same unit as input, voxels
+    return texture(tex, mod(uv, vec2(1.0)));
+}
+
+vec4 bicubic_sample(sampler2D tex, vec2 uv, vec2 size) 
+{
+    vec2 tex_size = size;
+    vec2 inv_tex_size = 1.0 / tex_size;
+
+    //vec2 _uv = uv * tex_size;
+    //vec2 tc = floor( _uv - 0.5 ) + 0.5;
+    //vec2 f = _uv - tc;
+
+    vec2 tc = uv * tex_size - 0.5;
+    vec2 f = fract(tc);
+    tc -= f;
+ 
+    //we'll need the second and third powers
+    //of f to compute our filter weights
+    vec2 f2 = f * f;
+    vec2 f3 = f2 * f;
+ 
+    //compute the filter weights
+    vec2 w0 = f2 - 0.5 * (f3 + f);
+    vec2 w1 = 1.5 * f3 - 2.5 * f2 + 1.0;
+    vec2 w3 = 0.5 * (f3 - f2);
+    vec2 w2 = 1.0 - w0 - w1 - w3;
+
+    vec2 s0 = w0 + w1;
+    vec2 s1 = w2 + w3;
+ 
+    vec2 f0 = w1 / (w0 + w1);
+    vec2 f1 = w3 / (w2 + w3);
+ 
+    vec2 t0 = tc - 1.0 + f0;
+    vec2 t1 = tc + 1.0 + f1;
+
+    t0 *= inv_tex_size;
+    t1 *= inv_tex_size;
+
+    return
+        (texture( tex, vec2( t0.x, t0.y ) ) * s0.x
+      +  texture( tex, vec2( t1.x, t0.y ) ) * s1.x) * s0.y
+      + (texture( tex, vec2( t0.x, t1.y ) ) * s0.x
+      +  texture( tex, vec2( t1.x, t1.y ) ) * s1.x) * s1.y;
+}
+
+vec4 bicubic_sample(sampler3D tex, vec3 uvw, vec3 size) 
+{
+    vec3 tex_size = size;
+    vec3 inv_tex_size = 1.0 / tex_size;
+
+    //vec3 _uvw = uvw * tex_size;
+    //vec3 tc = floor( _uvw - 0.5 ) + 0.5;
+    //vec3 f = _uvw - tc;
+
+    vec3 tc = mod(uvw, vec3(1.0)) * tex_size - 0.5;
+    vec3 f = fract(tc);
+    tc -= f;
+ 
+    //we'll need the second and third powers
+    //of f to compute our filter weights
+    vec3 f2 = f * f;
+    vec3 f3 = f2 * f;
+ 
+    //compute the filter weights
+    vec3 w0 = f2 - 0.5 * (f3 + f);
+    vec3 w1 = 1.5 * f3 - 2.5 * f2 + 1.0;
+    vec3 w3 = 0.5 * (f3 - f2);
+    vec3 w2 = 1.0 - w0 - w1 - w3;
+
+    vec3 s0 = w0 + w1;
+    vec3 s1 = w2 + w3;
+ 
+    vec3 f0 = w1 / (w0 + w1);
+    vec3 f1 = w3 / (w2 + w3);
+ 
+    vec3 t0 = tc - 1.0 + f0;
+    vec3 t1 = tc + 1.0 + f1;
+
+    t0 *= inv_tex_size;
+    t1 *= inv_tex_size;
+
+    return
+        texture( tex, vec3( t0.x, t0.y, t0.z ) ) * s0.x * s0.y * s0.z
+      + texture( tex, vec3( t1.x, t0.y, t0.z ) ) * s1.x * s0.y * s0.z
+      + texture( tex, vec3( t0.x, t1.y, t0.z ) ) * s0.x * s1.y * s0.z
+      + texture( tex, vec3( t1.x, t1.y, t0.z ) ) * s1.x * s1.y * s0.z
+      + texture( tex, vec3( t0.x, t0.y, t1.z ) ) * s0.x * s0.y * s1.z
+      + texture( tex, vec3( t1.x, t0.y, t1.z ) ) * s1.x * s0.y * s1.z
+      + texture( tex, vec3( t0.x, t1.y, t1.z ) ) * s0.x * s1.y * s1.z
+      + texture( tex, vec3( t1.x, t1.y, t1.z ) ) * s1.x * s1.y * s1.z;
 }
 
 float reduce_add(vec3 f)
@@ -147,7 +229,6 @@ bool sphere_intersect(Ray ray, vec3 center, float radius, out float t0, out floa
 
     return (sol && !behind);
 }
-
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;
@@ -557,7 +638,7 @@ vec3 moon_radiation(Ray ray, float solid_angle)
             /* combine spectra and the optical depth into transmittance */
             float transmittance = rayleigh_coeff[i] * optical_depth.x * rayleigh_density +
                                     1.11f * mie_coeff * optical_depth.y * mie_density;
-            r_spectrum[i] = irradiance[i] * 0.0000025 * exp(-transmittance) / solid_angle;
+            r_spectrum[i] = irradiance[i] * 0.0034 * exp(-transmittance) / solid_angle;
         }
 
         return spec_to_rgb(r_spectrum);

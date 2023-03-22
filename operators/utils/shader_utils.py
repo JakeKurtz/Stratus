@@ -17,17 +17,10 @@
 #
 # ------------------------------------------------------------------------- #
 
-import bpy
 import gpu
-import bgl
-
 from gpu_extras.batch import batch_for_shader
 
-import math
-from mathutils import Vector, Matrix
-
 from ... import globals
-from .general_utils import compute_dir, look_at, bgl_uniform_sampler
 
 def new_shader(name, vert_shader, frag_shader, coords, indices):
     globals.SHADER[name] = gpu.types.GPUShader(vert_shader, frag_shader, )

@@ -24,8 +24,9 @@ from ... import globals
 from .shader_utils import new_shader
 from .general_utils import bgl_texture_from_image, get_dir
 
-def init_world_node_tree():
+def init_world_node_tree(self):
     if globals.INITIALIZED_NODE_TREE is False:
+        self.report({'INFO'}, "STRATUS: initializing world node tree.")
         scene = bpy.context.scene
         prop = scene.render_props
 
@@ -58,8 +59,9 @@ def init_world_node_tree():
 
         globals.INITIALIZED_NODE_TREE = True
 
-def init_shaders():
+def init_shaders(self):
     if globals.INITIALIZED_SHADERS is False:
+        self.report({'INFO'}, "STRATUS: building shaders.")
         dir = get_dir()
 
         plane_coords = (
@@ -119,22 +121,23 @@ def init_shaders():
             fragment_shader = file.read()
         new_shader("screen", vertex_shader, fragment_shader, cube_coords, cube_indices)
 
-    globals.INITIALIZED_SHADERS = True
+        globals.INITIALIZED_SHADERS = True
 
-def init_textures():
+def init_textures(self):
     if globals.INITIALIZED_TEXTURES is False:
+        self.report({'INFO'}, "STRATUS: initializing textures.")
         dir = get_dir()
 
         bgl.glGenTextures(globals.NMB_NOISE_TEXTURES, globals.NOISE_TEXTURES)
         bgl.glGenTextures(globals.NMB_MOON_TEXTURES, globals.MOON_TEXTURES)
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_32.png", check_existing=True)
-        bgl_texture_from_image(img, (32, 32, 32), globals.NOISE_TEXTURES[0])
+        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_64.png", check_existing=True)
+        bgl_texture_from_image(img, (64, 64, 64), globals.NOISE_TEXTURES[0])
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_128.png", check_existing=True)
+        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_128.png", check_existing=True)
         bgl_texture_from_image(img, (128, 128, 128), globals.NOISE_TEXTURES[1])
         
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_2048.png", check_existing=True)
+        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_2048.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.NOISE_TEXTURES[2])
 
         img = bpy.data.images.load(dir+"\\textures\\noise\\noise_blue_128.png", check_existing=True)
@@ -146,4 +149,4 @@ def init_textures():
         img = bpy.data.images.load(dir+"\\textures\\moon\\moon_normal.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.MOON_TEXTURES[1])
 
-    globals.INITIALIZED_TEXTURES = True
+        globals.INITIALIZED_TEXTURES = True

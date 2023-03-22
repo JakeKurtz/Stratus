@@ -33,6 +33,25 @@ from bpy.types import (Panel,
 from .panel_utils import update_prop
 
 class STRATUS_CloudProperties(PropertyGroup):
+    noise_scales: FloatVectorProperty(
+        name = "noise_scales",
+        subtype='XYZ',
+        description = "A float property",
+        size=3,
+        max = 100.0,
+        min = 0.0,
+        update=update_prop
+    )
+
+    coverage_interpo: FloatProperty(
+        name = "coverage_interpo",
+        description = "A float property",
+        default = 1.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        ) 
+
     cld_show_viewport: BoolProperty(
         name="",
         description="A bool property",
@@ -54,7 +73,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         max = 100.0,
         min = 0.0,
         update=update_prop
-        )      
+        )           
         
     cld_horizon_dst: FloatProperty(
         name = "cld_horizon_dst",
@@ -375,6 +394,8 @@ class STRATUS_PT_cloud_panel(Panel):
         col.prop(prop, "cld_ambient_intsty")
         col.prop(prop, "cld_horizon_dst")
         col.prop(prop, "cld_horizon_h")
+        col.prop(prop, "noise_scales")
+        col.prop(prop, "coverage_interpo")
 
 class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
