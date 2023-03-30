@@ -23,10 +23,13 @@ import gpu
 import math
 import addon_utils
 
+from ... import globals
+
+from sys import platform
 from mathutils import Vector, Matrix          
 
 def refresh_viewers(context):
-    # Flip the shading type, which force Cycles to update its textures.
+    # Flipping the shading type, which forces Cycles to update its textures.
     if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
         wm = bpy.data.window_managers['WinMan']
         for win in wm.windows :
@@ -37,7 +40,7 @@ def refresh_viewers(context):
                             space.shading.type = 'SOLID'
                             space.shading.type = 'RENDERED'
 
-    # Flip some scene property to get the Eevee to update its textures in certain circumstances.
+    # Flip some scene property to get the Eevee to update its textures.
     if context.scene.render.engine == 'BLENDER_EEVEE':
         x = context.scene.render.resolution_percentage
         context.scene.render.resolution_percentage = x   
@@ -47,7 +50,13 @@ def get_dir():
         if mod.bl_info['name'] == "Stratus":
             filepath = mod.__file__
             break
-    dir = str(filepath.rsplit('\\', 1)[0])
+
+    if platform.startswith('darwin') or platform.startswith('linux'):
+        dir = str(filepath.rsplit('/', 1)[0])
+    elif platform.startswith('win32'):
+        dir = str(filepath.rsplit('\\', 1)[0])
+        dir.replace("\\","/")
+
     return dir
 
 def get_clip_end(context):
@@ -58,7 +67,6 @@ def get_clip_end(context):
     else:
         clip_end = context.area.spaces.active.clip_end
     return clip_end
-
 
 def compute_dir(theta, phi):
     dir = Vector(
@@ -147,15 +155,53 @@ def bgl_texture_from_image(image, dim, bindcode):
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, 0)
     bpy.data.images.remove(image)
 
-def bgl_uniform_sampler(shader, name, texture, dim, slot):
+def bgl_uniform_sampler(shader, name, texture, dim, wrap, filter, slot):
+    # ---------------------------------- Target ---------------------------------- #
+    if dim == 1:
+        gl_target = bgl.GL_TEXTURE_1D
+    elif dim == 2:
+        gl_target = bgl.GL_TEXTURE_2D
+    elif dim == 3:
+        gl_target = bgl.GL_TEXTURE_3D
+    else:
+        gl_target = bgl.GL_TEXTURE_2D
+
+    # ----------------------------------- Wrap ----------------------------------- #
+    if wrap == 'REPEAT':
+        gl_wrap = bgl.GL_REPEAT
+    elif wrap == 'MIRRORED_REPEAT':
+        gl_wrap = bgl.GL_MIRRORED_REPEAT
+    elif wrap == 'CLAMP_TO_EDGE':
+        gl_wrap = bgl.GL_CLAMP_TO_EDGE
+    elif wrap == 'CLAMP_TO_BORDER':
+        gl_wrap = bgl.GL_CLAMP_TO_BORDER
+    else:
+        gl_wrap = bgl.GL_REPEAT
+
+    # ---------------------------------- Filter ---------------------------------- #
+    if filter == 'NEAREST':
+        gl_filter = bgl.GL_NEAREST
+    elif filter == 'LINEAR':
+        gl_filter = bgl.GL_LINEAR
+    else:
+        gl_filter = bgl.GL_NEAREST
+
+    gl_slot = globals.MAX_TEXTURE_IMAGE_UNITS - slot
+
+    bgl.glActiveTexture(bgl.GL_TEXTURE0 + gl_slot)
+    bgl.glBindTexture(gl_target, texture)
 
     if dim == 1:
-        target = bgl.GL_TEXTURE_1D
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_S, gl_wrap)
     elif dim == 2:
-        target = bgl.GL_TEXTURE_2D
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_S, gl_wrap)
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_T, gl_wrap)
     elif dim == 3:
-        target = bgl.GL_TEXTURE_3D
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_S, gl_wrap)
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_T, gl_wrap)
+        bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_WRAP_R, gl_wrap)
 
-    bgl.glActiveTexture(bgl.GL_TEXTURE0 + slot)
-    bgl.glBindTexture(target, texture)
-    bgl.glUniform1i(bgl.glGetUniformLocation(shader.program, name), slot)
+    bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_MIN_FILTER, gl_filter)
+    bgl.glTexParameteri(gl_target, bgl.GL_TEXTURE_MAG_FILTER, gl_filter)
+
+    bgl.glUniform1i(bgl.glGetUniformLocation(shader.program, name), gl_slot)

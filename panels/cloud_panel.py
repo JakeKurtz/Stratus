@@ -33,26 +33,17 @@ from bpy.types import (Panel,
 from .panel_utils import update_prop
 
 class STRATUS_CloudProperties(PropertyGroup):
-    noise_scales: FloatVectorProperty(
-        name = "noise_scales",
-        subtype='XYZ',
-        description = "A float property",
-        size=3,
-        max = 100.0,
-        min = 0.0,
-        update=update_prop
-    )
 
     cld_show_viewport: BoolProperty(
         name="",
-        description="A bool property",
+        description="Display clouds in viewport.",
         default = True,
         update=update_prop
         )
         
     cld_show_render: BoolProperty(
         name="",
-        description="A bool property",
+        description="Display clouds in render.",
         default = True,
         update=update_prop
         )
@@ -60,16 +51,16 @@ class STRATUS_CloudProperties(PropertyGroup):
     cld_ap_intsty: FloatProperty(
         name = "Atmospheric Perspective Intensity",
         description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
-        default=0.1,
+        default=0.5,
         min= 0.0,
         max = 1.0,
         update=update_prop
         )
 
     cld_ambient_intsty: FloatProperty(
-        name = "cld_ambient_intsty",
-        description = "A float property",
-        default = 1.0,
+        name = "Ambient Intensity",
+        description = "The intensity of ambient light coming from the atmosphere.",
+        default = 3.0,
         max = 100.0,
         min = 0.0,
         update=update_prop
@@ -88,15 +79,15 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_enable: BoolProperty(
         name="",
-        description="A bool property",
+        description="Enable cirro cloud layer.",
         default = True,
         update=update_prop
     )
 
     cld_0_density: FloatProperty(
         name = "Density",
-        description = "A float property",
-        default = 0.1,
+        description = "Cloud layer density.",
+        default = 0.25,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -104,7 +95,7 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_size: FloatProperty(
         name = "Size",
-        description="Something",
+        description="Cloud layer size.",
         default=1.0,
         min= 0.0,
         max = 1,
@@ -113,7 +104,7 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_height: FloatProperty(
         name = "Height",
-        description="Something",
+        description="Height from sea level.",
         subtype="DISTANCE",
         default=8000,
         min= 7000,
@@ -123,17 +114,71 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_thickness: FloatProperty(
         name = "Thickness",
-        description = "A float property",
-        default = 1.15,
+        description = "Cloud layer thickness.",
+        default = 0.9,
         min = 0.01,
-        max = 2.5,
+        max = 1.0,
+        update=update_prop
+        )    
+        
+    cld_0_powder_intsty: FloatProperty(
+        name = "Powder Intensity",
+        description = "Intensity of the powder effect.",
+        default = 1.0,
+        min = 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+
+    cld_0_ap_intsty: FloatProperty(
+        name = "Atmospheric Perspective Intensity",
+        description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
+        default=0.5,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+
+    cld_0_ambient_intsty: FloatProperty(
+        name = "Ambient Intensity",
+        description = "The intensity of ambient light coming from the atmosphere.",
+        default = 3.0,
+        max = 100.0,
+        min = 0.0,
+        update=update_prop
+        )    
+        
+    cld_0_atten: FloatProperty(
+        name = "Attenuation",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
+        update=update_prop
+        )    
+        
+    cld_0_contr: FloatProperty(
+        name = "Contribution",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
+        update=update_prop
+        )
+
+    cld_0_eccen: FloatProperty(
+        name = "Eccentricity Attenuation",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
         update=update_prop
         )
 
     cld_0_detail_intsty: FloatProperty(
         name = "Detail Noise Intensity",
-        description="Something",
-        default=0.02,
+        description="Intensity of detail noise applied to cloud layer.",
+        default=-0.024,
         min= -1.0,
         max = 1.0,
         update=update_prop
@@ -141,8 +186,8 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_shape_intsty: FloatProperty(
         name = "Shape Noise Intensity",
-        description="Something",
-        default=-0.55,
+        description="Intensity of shape noise applied to cloud layer.",
+        default=-0.17,
         min= -1.0,
         max = 1.0,
         update=update_prop
@@ -150,8 +195,8 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_coverage_intsty: FloatProperty(
         name = "Coverage Noise Intensity",
-        description="Something",
-        default=1.0,
+        description="Intensity of coverage noise applied to cloud layer.",
+        default=0.87,
         min= 0.0,
         max = 1.0,
         update=update_prop
@@ -159,8 +204,8 @@ class STRATUS_CloudProperties(PropertyGroup):
     
     cld_0_coverage_shape: FloatProperty(
         name = "Coverage Shape",
-        description = "A float property",
-        default = 1.0,
+        description = "Interpolates between coverage noise maps.",
+        default = 0.36,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -168,7 +213,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         
     cld_0_rotation: FloatProperty(
         name = "Rotation",
-        description = "",
+        description = "Cloud layer rotation.",
         default = 0.0,
         subtype="ANGLE",
         update=update_prop
@@ -176,29 +221,31 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_0_coverage_offset: FloatVectorProperty(
         name = "Coverage Noise Offset",
-        description="Something",
+        description="Coverage noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
-        step = 100,
-        default=(750,0),
+        step = 1,
+        default=(936,0),
         update=update_prop
         )
 
     cld_0_shape_offset: FloatVectorProperty(
         name = "Shape Noise Offset",
-        description="Something",
+        description="Shape noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
+        step = 1,
         default=(0,0),
         update=update_prop
         )
 
     cld_0_detail_offset: FloatVectorProperty(
         name = "Detail Noise Offset",
-        description="Something",
+        description="Detail noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
         default=(0,0),
+        step = 1,
         update=update_prop
         ) 
 
@@ -206,24 +253,24 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_enable: BoolProperty(
         name="",
-        description="A bool property",
+        description="Enable cumulus cloud layer.",
         default = True,
         update=update_prop
     )
 
     cld_1_density: FloatProperty(
         name = "Density",
-        description = "A float property",
-        default = 0.25,
-        max = 10.0,
+        description = "Cloud layer density.",
+        default = 0.2,
+        max = 1.0,
         min = 0.0,
         update=update_prop
         )
 
     cld_1_size: FloatProperty(
         name = "Size",
-        description="Something",
-        default=0.5,
+        description="Cloud layer size.",
+        default=0.45,
         min= 0.0,
         max = 1,
         update=update_prop
@@ -231,7 +278,7 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_height: FloatProperty(
         name = "Height",
-        description="Something",
+        description="Height from sea level.",
         subtype="DISTANCE",
         default=2000,
         min= 500.0,
@@ -241,26 +288,80 @@ class STRATUS_CloudProperties(PropertyGroup):
           
     cld_1_thickness: FloatProperty(
         name = "Thickness",
-        description = "A float property",
-        default = 1.3,
+        description = "Cloud layer thickness.",
+        default = 2.5,
         min = 0.01,
         max = 2.5,
         update=update_prop
         )
 
+    cld_1_powder_intsty: FloatProperty(
+        name = "Powder Intensity",
+        description = "Intensity of the powder effect.",
+        default = 1.0,
+        min = 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+
+    cld_1_ap_intsty: FloatProperty(
+        name = "Atmospheric Perspective Intensity",
+        description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
+        default=0.5,
+        min= 0.0,
+        max = 1.0,
+        update=update_prop
+        )
+
+    cld_1_ambient_intsty: FloatProperty(
+        name = "Ambient Intensity",
+        description = "The intensity of ambient light coming from the atmosphere.",
+        default = 3.0,
+        max = 100.0,
+        min = 0.0,
+        update=update_prop
+        )    
+        
+    cld_1_atten: FloatProperty(
+        name = "Attenuation",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
+        update=update_prop
+        )    
+        
+    cld_1_contr: FloatProperty(
+        name = "Contribution",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
+        update=update_prop
+        )
+
+    cld_1_eccen: FloatProperty(
+        name = "Eccentricity Attenuation",
+        description = "",
+        default = 0.5,
+        max = 10.0,
+        min = 0.0,
+        update=update_prop
+        )
+
     cld_1_detail_intsty: FloatProperty(
         name = "Detail Noise Intensity",
-        description="Something",
-        default=0.1,
-        min= -1.0,
+        description="Intensity of detail noise applied to cloud layer.",
+        default=0.05,
+        min = -1.0,
         max = 1.0,
         update=update_prop
         ) 
 
     cld_1_shape_intsty: FloatProperty(
         name = "Shape Noise Intensity",
-        description="Something",
-        default=0.3,
+        description="Intensity of shape noise applied to cloud layer.",
+        default=0.23,
         min= -1.0,
         max = 1.0,
         update=update_prop
@@ -268,8 +369,8 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_coverage_intsty: FloatProperty(
         name = "Coverage Noise Intensity",
-        description="Something",
-        default=0.55,
+        description="Intensity of coverage noise applied to cloud layer.",
+        default=0.62,
         min= 0.0,
         max = 1.0,
         update=update_prop
@@ -277,8 +378,8 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_coverage_shape: FloatProperty(
         name = "Coverage Shape",
-        description = "A float property",
-        default = 1.0,
+        description = "Interpolates between coverage noise maps.",
+        default = 0.1,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -286,7 +387,7 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_rotation: FloatProperty(
         name = "Rotation",
-        description = "",
+        description = "Cloud layer rotation.",
         default = 0.0,
         subtype="ANGLE",
         update=update_prop
@@ -294,28 +395,30 @@ class STRATUS_CloudProperties(PropertyGroup):
 
     cld_1_coverage_offset: FloatVectorProperty(
         name = "Coverage Noise Offset",
-        description="Something",
+        description="Coverage noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
-        step = 100,
-        default=(0,0),
+        step = 1,
+        default=(3671,9425),
         update=update_prop
         )
 
     cld_1_shape_offset: FloatVectorProperty(
         name = "Shape Noise Offset",
-        description="Something",
+        description="Shape noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
+        step = 1,
         default=(0,0),
         update=update_prop
         )
 
     cld_1_detail_offset: FloatVectorProperty(
         name = "Detail Noise Offset",
-        description="Something",
+        description="Detail noise texture offset.",
         subtype='TRANSLATION',
         size = 2,
+        step = 1,
         default=(0,0),
         update=update_prop
         ) 
@@ -339,12 +442,6 @@ class STRATUS_PT_cloud_panel(Panel):
         render_options.label(text="Clouds")
         render_options.prop(prop, 'cld_show_viewport', icon=icon_vp)
         render_options.prop(prop, 'cld_show_render', icon=icon_r)
-
-        col = layout.column()
-        col.label(text="Lighting")
-        col.prop(prop, "cld_ap_intsty", slider=True)
-        col.prop(prop, "cld_ambient_intsty")
-        col.prop(prop, "cld_G")
 
 class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
@@ -373,14 +470,21 @@ class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
         grid_0.prop(prop, "cld_0_size", slider=True)
         grid_0.prop(prop, "cld_0_height", slider=True)
         grid_0.prop(prop, "cld_0_thickness", slider=True)
-        
-        grid_1 = layout.grid_flow(columns=1, align=True)
-        grid_1.label(text="Noise")
 
-        grid_1.prop(prop, "cld_0_detail_intsty", slider=True)
-        grid_1.prop(prop, "cld_0_shape_intsty", slider=True)
-        grid_1.prop(prop, "cld_0_coverage_intsty", slider=True)
-        grid_1.prop(prop, "cld_0_coverage_shape", slider=True)
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.label(text="Lighting")
+
+        grid_1.prop(prop, "cld_0_powder_intsty", slider=True)
+        grid_1.prop(prop, "cld_0_ap_intsty", slider=True)
+        grid_1.prop(prop, "cld_0_ambient_intsty")
+
+        grid_2 = layout.grid_flow(columns=1, align=True)
+        grid_2.label(text="Noise")
+
+        grid_2.prop(prop, "cld_0_detail_intsty", slider=True)
+        grid_2.prop(prop, "cld_0_shape_intsty", slider=True)
+        grid_2.prop(prop, "cld_0_coverage_intsty", slider=True)
+        grid_2.prop(prop, "cld_0_coverage_shape", slider=True)
         
 class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
@@ -409,14 +513,21 @@ class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
         grid_0.prop(prop, "cld_1_size", slider=True)
         grid_0.prop(prop, "cld_1_height", slider=True)
         grid_0.prop(prop, "cld_1_thickness", slider=True)
-        
-        grid_1 = layout.grid_flow(columns=1, align=True)
-        grid_1.label(text="Noise")
 
-        grid_1.prop(prop, "cld_1_detail_intsty", slider=True)
-        grid_1.prop(prop, "cld_1_shape_intsty", slider=True)
-        grid_1.prop(prop, "cld_1_coverage_intsty", slider=True)
-        grid_1.prop(prop, "cld_1_coverage_shape", slider=True)
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.label(text="Lighting")
+
+        grid_1.prop(prop, "cld_1_powder_intsty", slider=True)
+        grid_1.prop(prop, "cld_1_ap_intsty", slider=True)
+        grid_1.prop(prop, "cld_1_ambient_intsty")
+
+        grid_2 = layout.grid_flow(columns=1, align=True)
+        grid_2.label(text="Noise")
+
+        grid_2.prop(prop, "cld_1_detail_intsty", slider=True)
+        grid_2.prop(prop, "cld_1_shape_intsty", slider=True)
+        grid_2.prop(prop, "cld_1_coverage_intsty", slider=True)
+        grid_2.prop(prop, "cld_1_coverage_shape", slider=True)
 
 class STRATUS_PT_sub_cloud_layer_0_noise_offsets_panel(Panel):
     bl_parent_id = "STRATUS_PT_sub_cloud_layer_0_panel"

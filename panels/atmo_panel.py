@@ -35,7 +35,7 @@ from .panel_utils import update_prop
 class STRATUS_AtmoProperties(PropertyGroup):
     prop_sky_altitude: FloatProperty(
         name = "Altitude",
-        description = "A float property",
+        description = "Height from sea level.",
         default = 2000.0,
         subtype="DISTANCE",
         min = 0.0,
@@ -44,7 +44,7 @@ class STRATUS_AtmoProperties(PropertyGroup):
 
     prop_air: FloatProperty(
         name = "Air",
-        description="Something",
+        description="Density of air molecules.",
         default=1.0,
         min= 0.0,
         max = 10.0,
@@ -53,7 +53,7 @@ class STRATUS_AtmoProperties(PropertyGroup):
     
     prop_dust: FloatProperty(
         name = "Dust",
-        description="Something",
+        description="Density of dust molecules and water droplets.",
         default=1.0,
         min= 0.0,
         max = 10.0,
@@ -62,7 +62,7 @@ class STRATUS_AtmoProperties(PropertyGroup):
     
     prop_ozone: FloatProperty(
         name = "Ozone",
-        description="Something",
+        description="Density of ozone layer.",
         default=1.0,
         min= 0.0,
         max = 10.0,
@@ -71,14 +71,14 @@ class STRATUS_AtmoProperties(PropertyGroup):
     
     atm_show_viewport: BoolProperty(
         name="",
-        description="A bool property",
+        description="Display atmosphere in viewport.",
         default = True,
         update=update_prop
         )
         
     atm_show_render: BoolProperty(
         name="",
-        description="A bool property",
+        description="Display atmosphere in render.",
         default = True,
         update=update_prop
         )

@@ -21,7 +21,6 @@ out vec4 fragColor;
 
 uniform sampler2D tex;
 
-uniform vec2 monitor_size;
 uniform vec2 scr_size;
 uniform vec2 tex_size;
 
@@ -44,11 +43,11 @@ vec3 reinhard(vec3 x)
 void main() 
 {
     vec2 uv = gl_FragCoord.xy / scr_size;   
-    uv *= tex_size / monitor_size;
+    uv *= tex_size / scr_size;
 
-    vec3 texColor = texture(tex, uv).rgb * env_img_strength;
+    vec3 tex_color = texture(tex, uv).rgb;
 
-    vec3 color = sat(reinhard(texColor));
+    vec3 color = vec3(1.0) - exp(-tex_color * env_img_strength);
 
     color = pow(color, vec3(1.0 / gamma));
 

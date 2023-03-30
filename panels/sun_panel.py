@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
+from math import radians
 from bpy.props import (StringProperty,
                        BoolProperty,
                        IntProperty,
@@ -57,7 +58,7 @@ class STRATUS_SunProperties(PropertyGroup):
     sun_silver_intsty: FloatProperty(
         name = "Silverline Intensity",
         description="Intensity of the bright outline along the edge of the clouds.",
-        default=0.6,
+        default=3.0,
         min= 0.0,
         update=update_prop
         ) 
@@ -65,7 +66,7 @@ class STRATUS_SunProperties(PropertyGroup):
     sun_silver_spread: FloatProperty(
         name = "Silverline Spread",
         description="The spread of the bright outline along the edge of the clouds.",
-        default=0.3,
+        default=0.02,
         min= 0.0,
         max = 1.0,
         update=update_prop
@@ -74,33 +75,26 @@ class STRATUS_SunProperties(PropertyGroup):
     sun_size: FloatProperty(
         name = "Size",
         description = "Size of Sun.",
-        default = 0.545,
+        default = radians(0.545),
         subtype="ANGLE",
         min = 0.0,
-        max = 90.0,
-        update=update_prop
-        )
-        
-    sun_disk_intsty: FloatProperty(
-        name = "Intensity",
-        description = "Strength of Sun disk.",
-        default = 10.0,
-        min = 0.0,
+        max = radians(90.0),
         update=update_prop
         )
 
     sun_intsty: FloatProperty(
         name = "Intensity",
-        description = "Strength of Sun light.",
-        default = 10.0,
+        description = "Strength of Sun disk.",
+        default = 1.0,
         min = 0.0,
+        max = 1000.0,
         update=update_prop
         )
         
     sun_elevation: FloatProperty(
         name = "Elevation",
         description = "Sun Angle from horizon.",
-        default = 5.0,
+        default = radians(90.0),
         subtype="ANGLE",
         update=update_prop
         )
@@ -140,7 +134,7 @@ class STRATUS_PT_sun_panel(Panel):
         layout.prop(prop, "sun_enable_light")
 
         grid_0 = layout.grid_flow(columns=1, align=True)
-        grid_0.prop(prop, "sun_disk_intsty")
+        grid_0.prop(prop, "sun_intsty")
         grid_0.prop(prop, "sun_silver_intsty")
         grid_0.prop(prop, "sun_silver_spread")
 

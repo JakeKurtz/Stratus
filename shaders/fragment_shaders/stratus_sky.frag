@@ -65,16 +65,12 @@ vec4 bicubic_sample(sampler2D tex, vec2 uv, vec2 size)
     vec2 tex_size = size;
     vec2 inv_tex_size = 1.0 / tex_size;
 
-    //vec2 _uv = uv * tex_size;
-    //vec2 tc = floor( _uv - 0.5 ) + 0.5;
-    //vec2 f = _uv - tc;
-
     vec2 tc = uv * tex_size - 0.5;
     vec2 f = fract(tc);
     tc -= f;
  
-    //we'll need the second and third powers
-    //of f to compute our filter weights
+    // we'll need the second and third powers
+    // of f to compute our filter weights
     vec2 f2 = f * f;
     vec2 f3 = f2 * f;
  
@@ -108,16 +104,12 @@ vec4 bicubic_sample(sampler3D tex, vec3 uvw, vec3 size)
     vec3 tex_size = size;
     vec3 inv_tex_size = 1.0 / tex_size;
 
-    //vec3 _uvw = uvw * tex_size;
-    //vec3 tc = floor( _uvw - 0.5 ) + 0.5;
-    //vec3 f = _uvw - tc;
-
     vec3 tc = mod(uvw, vec3(1.0)) * tex_size - 0.5;
     vec3 f = fract(tc);
     tc -= f;
  
-    //we'll need the second and third powers
-    //of f to compute our filter weights
+    // we'll need the second and third powers
+    // of f to compute our filter weights
     vec3 f2 = f * f;
     vec3 f3 = f2 * f;
  
@@ -175,7 +167,6 @@ vec2 sample_spherical_map(const vec3 d)
 }
 
 /* ------------------------------ SDF Functions ----------------------------- */
-/* https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm */
 
 float sdf_sphere( vec3 p, float s ) 
 {
@@ -195,40 +186,29 @@ float sdf_op_smooth_sub( float d1, float d2, float k )
 
 /* ------------------------- Intersection Functions ------------------------- */
 
-bool solve_quadratic(float b, float c, float d, out float t0, out float t1) 
-{
-    if (d > 0.0) {
-        float q = (b > 0) ?
-            -0.5 * (b + sqrt(d)) :
-            -0.5 * (b - sqrt(d));
-        t0 = q;
-        t1 = c / q;
-    } else if (d == 0.0) {
-        t0 = t1 = -0.5*b; 
-    } else {
-        return false;
-    }
-    if (t0 > t1) {
-        float tmp = t0;
-        t0 = t1;
-        t1 = tmp;
-    }
-    return true;
-}
-
 bool sphere_intersect(Ray ray, vec3 center, float radius, out float t0, out float t1)
 {
-    vec3 l = (ray.pos - center);
+    precise vec3 l = (ray.pos - center);
+    precise float b = dot(ray.dir, l);
+    precise vec3 qc = l - b*ray.dir;
+    precise float h = radius*radius - dot(qc,qc);
 
-    float b = 2.0*dot(ray.dir, l);
-    float c = dot(l, l) - (radius * radius);
-    float d = (b * b) - 4.0*c;
+    if (h < 0.0) {
+        t0 = -1.0;
+        t1 = -1.0;
+        return false;
+    }
 
-    bool sol = solve_quadratic(b, c, d, t0, t1);
+    h = sqrt(h);
+
+    t0 = -b-h;
+    t1 = -b+h;
+
     bool behind = (t0 < 0.0 && t1 < 0.0);
 
-    return (sol && !behind);
+    return !behind;
 }
+
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;

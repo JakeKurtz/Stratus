@@ -38,6 +38,11 @@ NOISE_TEXTURES = bgl.Buffer(bgl.GL_INT, [NMB_NOISE_TEXTURES])
 global MOON_TEXTURES
 MOON_TEXTURES = bgl.Buffer(bgl.GL_INT, [NMB_MOON_TEXTURES])
 
+global MAX_TEXTURE_IMAGE_UNITS
+max_tex_img_units = bgl.Buffer(bgl.GL_INT, [1])
+bgl.glGetIntegerv(bgl.GL_MAX_TEXTURE_IMAGE_UNITS, max_tex_img_units)
+MAX_TEXTURE_IMAGE_UNITS = max_tex_img_units[0] - 1
+
 global SHADER
 SHADER = {}
 global BATCH

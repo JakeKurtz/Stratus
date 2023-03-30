@@ -74,16 +74,12 @@ vec4 bicubic_sample(sampler2D tex, vec2 uv, vec2 size)
     vec2 tex_size = size;
     vec2 inv_tex_size = 1.0 / tex_size;
 
-    //vec2 _uv = uv * tex_size;
-    //vec2 tc = floor( _uv - 0.5 ) + 0.5;
-    //vec2 f = _uv - tc;
-
     vec2 tc = uv * tex_size - 0.5;
     vec2 f = fract(tc);
     tc -= f;
  
-    //we'll need the second and third powers
-    //of f to compute our filter weights
+    // we'll need the second and third powers
+    // of f to compute our filter weights
     vec2 f2 = f * f;
     vec2 f3 = f2 * f;
  
@@ -117,16 +113,12 @@ vec4 bicubic_sample(sampler3D tex, vec3 uvw, vec3 size)
     vec3 tex_size = size;
     vec3 inv_tex_size = 1.0 / tex_size;
 
-    //vec3 _uvw = uvw * tex_size;
-    //vec3 tc = floor( _uvw - 0.5 ) + 0.5;
-    //vec3 f = _uvw - tc;
-
     vec3 tc = mod(uvw, vec3(1.0)) * tex_size - 0.5;
     vec3 f = fract(tc);
     tc -= f;
  
-    //we'll need the second and third powers
-    //of f to compute our filter weights
+    // we'll need the second and third powers
+    // of f to compute our filter weights
     vec3 f2 = f * f;
     vec3 f3 = f2 * f;
  
@@ -184,7 +176,6 @@ vec2 sample_spherical_map(const vec3 d)
 }
 
 /* ------------------------------ SDF Functions ----------------------------- */
-/* https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm */
 
 float sdf_sphere( vec3 p, float s ) 
 {
@@ -204,40 +195,29 @@ float sdf_op_smooth_sub( float d1, float d2, float k )
 
 /* ------------------------- Intersection Functions ------------------------- */
 
-bool solve_quadratic(float b, float c, float d, out float t0, out float t1) 
-{
-    if (d > 0.0) {
-        float q = (b > 0) ?
-            -0.5 * (b + sqrt(d)) :
-            -0.5 * (b - sqrt(d));
-        t0 = q;
-        t1 = c / q;
-    } else if (d == 0.0) {
-        t0 = t1 = -0.5*b; 
-    } else {
-        return false;
-    }
-    if (t0 > t1) {
-        float tmp = t0;
-        t0 = t1;
-        t1 = tmp;
-    }
-    return true;
-}
-
 bool sphere_intersect(Ray ray, vec3 center, float radius, out float t0, out float t1)
 {
-    vec3 l = (ray.pos - center);
+    precise vec3 l = (ray.pos - center);
+    precise float b = dot(ray.dir, l);
+    precise vec3 qc = l - b*ray.dir;
+    precise float h = radius*radius - dot(qc,qc);
 
-    float b = 2.0*dot(ray.dir, l);
-    float c = dot(l, l) - (radius * radius);
-    float d = (b * b) - 4.0*c;
+    if (h < 0.0) {
+        t0 = -1.0;
+        t1 = -1.0;
+        return false;
+    }
 
-    bool sol = solve_quadratic(b, c, d, t0, t1);
+    h = sqrt(h);
+
+    t0 = -b-h;
+    t1 = -b+h;
+
     bool behind = (t0 < 0.0 && t1 < 0.0);
 
-    return (sol && !behind);
+    return !behind;
 }
+
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;
@@ -361,6 +341,8 @@ uniform vec3 moon_phase_dir;
 uniform float moon_ambient_intsty;
 
 uniform mat4 moon_rot_mat;
+
+#define MAX_RADIATION 2e6
 /* --------------------------------- Clouds --------------------------------- */
 
 uniform bool enable_cld;
@@ -377,19 +359,12 @@ uniform bool enable_cld_1;
 *   c = <0, 0, h - r>
 */
 
-uniform float cld_domain_min_radius;
-uniform float cld_domain_max_radius;
 uniform vec3 cld_domain_center;
-
-uniform float cld_ap_intsty;
-
-uniform float cld_ambient_intsty;
 
 uniform int cld_max_steps;
 uniform int cld_max_light_steps;
 
 uniform float cld_G;
-//const float cld_G = 0.0;
 
 const float cld_top_roundness = 0.05;
 const float cld_btm_roundness = 0.0;
@@ -399,42 +374,39 @@ const float cld_btm_density = 0.45;
 
 uniform bool enable_bicubic;
 
-/* ------------------------------ Cloud Layer 0 ----------------------------- */
+struct Cloud {
+    float   radius;
+    float   density;
+    float   height;
+    float   thickness;
 
-uniform float   cld_0_radius;
-uniform float   cld_0_density;
-uniform float   cld_0_height;
-uniform float   cld_0_size;
-uniform float   cld_0_detail_intsty;
-uniform float   cld_0_shape_intsty;
-uniform float   cld_0_coverage_intsty;
+    float   powder_intsty;
+    float   ap_intsty;
+    float   ambient_intsty;
 
-uniform float   cld_0_coverage_shape;
+    float   atten;
+    float   contr;
+    float   eccen;
 
-uniform vec2    cld_0_detail_offset;
-uniform vec2    cld_0_shape_offset;
-uniform vec2    cld_0_coverage_offset;
+    float   coverage_shape;
 
-uniform mat4    cld_0_transform;
+    float   coverage_scale;
+    float   shape_scale;
+    float   detail_scale;
 
-/* ------------------------------ Cloud Layer 1 ----------------------------- */
+    float   coverage_intsty;
+    float   shape_intsty;
+    float   detail_intsty;
 
-uniform float   cld_1_radius;
-uniform float   cld_1_density;
-uniform float   cld_1_height;
-uniform float   cld_1_size;
-uniform float   cld_1_detail_intsty;
-uniform float   cld_1_shape_intsty;
-uniform float   cld_1_coverage_intsty;
+    vec2    coverage_offset;
+    vec2    shape_offset;
+    vec2    detail_offset;
 
-uniform float   cld_1_coverage_shape;
+    mat4    transform;
+};
 
-uniform vec2    cld_1_detail_offset;
-uniform vec2    cld_1_shape_offset;
-uniform vec2    cld_1_coverage_offset;
-
-uniform mat4    cld_1_transform;
-
+uniform Cloud cloud_0;
+uniform Cloud cloud_1;
 /* -------------------------------------------------------------------------- */
 /*                                 ATMOSPHERE                                 */
 /* -------------------------------------------------------------------------- */
@@ -703,7 +675,7 @@ bool hit_moon(vec3 dir)
     Ray ray = Ray(vec3(0.0), dir);
 
     vec3 moon_pos = moon.dir * moon_dist;
-    float moon_radius = (moon_half_angular*1.05) * moon_dist;
+    float moon_radius = (moon_half_angular * 1.05) * moon_dist;
 
     float t0, t1;
     return sphere_intersect(ray, moon_pos, moon_radius, t0, t1);
@@ -735,9 +707,9 @@ vec4 draw_moon(Ray ray)
         norm = normalize(T*norm.x + B*norm.y + sphere_norm*norm.z);
 
         float moon_solid_angle = M_2PI * (1.0 - cos(0.5 * moon_half_angular));
-        vec3 L = sun_radiation(ray, moon_solid_angle) * 0.00025 * moon.intsty;
+        vec3 L = min(sun_radiation(ray, moon_solid_angle) * 0.00025 * moon.intsty, MAX_RADIATION);
 
-        float diff = max(dot(moon_phase_dir, norm),0.0);
+        float diff = max(dot(moon_phase_dir, norm), 0.0);
         color = vec4(L * (diff + moon_ambient_intsty) * texture(moon_albedo_tex, uv).rgb, 1.0);
     }
     return color;
@@ -760,7 +732,7 @@ vec4 draw_sun(Ray ray)
 
     if (color.a > 0.00001) {
         float sun_solid_angle = M_2PI * (1.0 - cos(0.5 * sun_half_angular));
-        vec3 L = sun_radiation(ray, sun_solid_angle) * sun.intsty;
+        vec3 L = min(sun_radiation(ray, sun_solid_angle) * sun.intsty, MAX_RADIATION);
         color.rgb *= L;
     }
     return color;
@@ -784,47 +756,38 @@ void shell_intersection(Ray ray, vec3 center, float radius_inner, float radius_o
     t_end = (hit_outer) ? t1 : 0.0;
 }
 
-bool cld_sample(
-    in vec3 p, 
-    in float radius, 
-    in float density, 
-    in float height, 
-    in float thickness,
-    in float coverage_intsty,  
-    in float shape_intsty, 
-    in float detail_intsty,
-    in float coverage_scale,
-    in float shape_scale,
-    in float detail_scale,
-    in float coverage_shape,
-    in vec2 coverage_offset,
-    in vec2 shape_offset,
-    in vec2 detail_offset,
+bool cld_sample( 
+    Cloud cloud,
+    vec3 pos,
     out float ds, 
     out float dist, 
     out float p_h) 
 {
-    float inner_shell = sdf_sphere(p, radius);
-    float outer_shell = sdf_sphere(p, radius + thickness);
+    float inner_shell = sdf_sphere(pos, cloud.radius);
+    float outer_shell = sdf_sphere(pos, cloud.radius + cloud.thickness);
     float cld_shell = sdf_op_sub(inner_shell, outer_shell);
 
-    bool hit = false;
     ds = 0.0;
+    dist = 0.0;
+    p_h = 0.0;
+
+    bool hit = false;
+
     if (cld_shell < 0.0) {
-        p_h = saturate(clamp(length(p) - radius, 0.0, thickness) / (thickness));
+        p_h = saturate(clamp(length(pos) - cloud.radius, 0.0, cloud.thickness) / (cloud.thickness));
         
-        vec2 c_sp = (p.xy + coverage_offset) * coverage_scale;
+        vec2 c_sp = (pos.xy + cloud.coverage_offset) * cloud.coverage_scale;
         vec4 cns = (enable_bicubic) ? bicubic_sample(noise_tex_2D_2048, c_sp, vec2(2048)) : texture(noise_tex_2D_2048, c_sp);
 
-        vec3 s_sp = (p + vec3(shape_offset, 0.0)) * shape_scale;
+        vec3 s_sp = (pos + vec3(cloud.coverage_offset + cloud.shape_offset, 0.0)) * cloud.shape_scale;
         vec4 sns = (enable_bicubic) ? bicubic_sample(noise_tex_3D_128, s_sp, vec3(128)) : texture(noise_tex_3D_128, s_sp);
 
-        vec3 d_sp = (p + vec3(detail_offset, 0.0)) * detail_scale;
+        vec3 d_sp = (pos + vec3(cloud.coverage_offset + cloud.detail_offset, 0.0)) * cloud.detail_scale;
         vec4 dns = (enable_bicubic) ? bicubic_sample(noise_tex_3D_64, d_sp, vec3(64)) : texture(noise_tex_3D_64, d_sp);
 
-        float CN = mix(cns.x, cns.y, coverage_shape);
+        float CN = mix(cns.x, cns.y, cloud.coverage_shape);
 
-        float wh = CN * height;
+        float wh = CN * cloud.height;
 
         float SR_b = saturate(remap(p_h, 0.0, cld_btm_roundness, 0.0, 1.0));
         float SR_t = saturate(remap(p_h, wh*cld_top_roundness, wh, 1.0, 0.0));
@@ -838,17 +801,17 @@ bool cld_sample(
         float DN = dns.r*0.625+dns.g*0.25+dns.b*0.125;
         float SN = sns.g*0.625+sns.b*0.25+sns.a*0.125;
 
-        float cld_coverage = remap(CN * coverage_intsty * SA, 0.0, 1.0, -1.0, 1.0);
-        float cld_shape = SN * shape_intsty;
-        //float cld_shape = mix(SN-1, SN, saturate(p_h*5.0)) * shape_intsty;
-        float cld_detail = DN * detail_intsty;
-        //float cld_detail = mix(DN-1, DN, saturate(p_h*5.0)) * detail_intsty;
+        float cld_coverage = remap(CN * cloud.coverage_intsty * SA, 0.0, 1.0, -1.0, 1.0);
+        float cld_shape = SN * cloud.shape_intsty;
+        //float cld_shape = mix(SN-1, SN, saturate(p_h*5.0)) * cloud.shape_intsty;
+        float cld_detail = DN * cloud.detail_intsty;
+        //float cld_detail = mix(DN-1, DN, saturate(p_h*5.0)) * cloud.detail_intsty;
 
         cld_shell = sdf_op_sub(cld_coverage, cld_shell);
-        cld_shell = cld_detail + cld_shape + cld_shell;
+        cld_shell = clamp(cld_detail + cld_shape, -1.0, 1.0) + cld_shell;
 
         if (cld_shell < 0.f) {
-            ds = density * min(abs(cld_shell), 1.0) * DA;
+            ds = cloud.density * min(abs(cld_shell), 1.0) * DA;
             dist = cld_shell;
             hit = true;
         } else {
@@ -861,99 +824,28 @@ bool cld_sample(
     return hit;
 }
 
-bool cloud_density(in vec3 p, out float sigma_s, out float sigma_t, out float dist, out float p_h) 
+bool cloud_density(
+    Cloud cloud,
+    vec3 pos, 
+    out float sigma_s, 
+    out float sigma_t, 
+    out float dist, 
+    out float p_h) 
 {
-    float scale, detail_scale, shape_scale, coverage_scale, thickness;
+    sigma_t = 0.0;
+    sigma_s = 0.0;
+    dist = 0.0;
+    p_h = 0.0;
 
-    float cld_0_dist, cld_0_ds, cld_0_ph;
-    float cld_1_dist, cld_1_ds, cld_1_ph;
-
-    bool hit_0, hit_1;
-
-    if (enable_cld_0) {
-        scale = mix(29, 100, cld_0_size);
-        detail_scale = 0.002 / scale;
-        shape_scale = 0.0015 / scale;
-        coverage_scale = 0.00003 / scale;
-        thickness = 1000 * scale;
-
-        vec3 p0 = vec3(cld_0_transform*vec4(p, 1.0));
-
-        hit_0 = cld_sample(
-            p0, 
-            cld_0_radius,
-            cld_0_density,
-            cld_0_height*.1,
-            thickness,
-            cld_0_coverage_intsty,
-            cld_0_shape_intsty,
-            cld_0_detail_intsty,
-            coverage_scale,
-            shape_scale,
-            detail_scale,
-            cld_0_coverage_shape,
-            cld_0_coverage_offset*scale,
-            cld_0_shape_offset*scale,
-            cld_0_detail_offset*scale,
-            cld_0_ds,
-            cld_0_dist,
-            cld_0_ph
-        );
-    }
-
-    if (enable_cld_1) {
-        scale = mix(1.0, 7.5, cld_1_size);
-        detail_scale = 0.002 / scale;
-        shape_scale = 0.0008 / scale;
-        coverage_scale = 0.00003 / scale;
-        thickness = 1000 * scale;
-
-        vec3 p1 = vec3(cld_1_transform*vec4(p, 1.0));
-
-        hit_1 = cld_sample(
-            p1, 
-            cld_1_radius,
-            cld_1_density,
-            cld_1_height,
-            thickness,
-            cld_1_coverage_intsty,
-            cld_1_shape_intsty,
-            cld_1_detail_intsty,
-            coverage_scale,
-            shape_scale,
-            detail_scale,
-            cld_1_coverage_shape,
-            cld_1_coverage_offset*scale,
-            cld_1_shape_offset*scale,
-            cld_1_detail_offset*scale,
-            cld_1_ds,
-            cld_1_dist,
-            cld_1_ph
-        );
-    }
-
-    if (hit_0) {
-        dist = cld_0_dist;
-        p_h = cld_0_ph;
-        sigma_s = cld_0_ds;
-    }
-    else if (hit_1) {
-        dist = cld_1_dist;
-        p_h = cld_1_ph;
-        sigma_s = cld_1_ds;
-    }
-    else {
-        dist = 0.0;
-        p_h = 0.0;
-        sigma_s = 0.0;
-    }
+    vec3 t_pos = vec3(cloud.transform * vec4(pos, 1.0));
+    bool hit = cld_sample(cloud, t_pos, sigma_s, dist, p_h);
 
     sigma_t = max(0.000000001, sigma_s);
 
-    return (hit_0 || hit_1);
+    return hit;
 }
 
-float shadow_raymarch(Ray ray, vec3 light_dir)
+float shadow_raymarch(Cloud cloud, Ray ray, vec3 light_dir)
 {
     float shadow = 1.0;
 
@@ -963,10 +855,10 @@ float shadow_raymarch(Ray ray, vec3 light_dir)
 
     float t_start, t_end;
     shell_intersection(
-        light_ray, 
-        cld_domain_center + vec3(0,0,earth_radius), 
-        cld_domain_min_radius, 
-        cld_domain_max_radius, 
+        ray, 
+        cld_domain_center + vec3(0, 0, earth_radius), 
+        cloud.radius, 
+        cloud.radius + cloud.thickness, 
         t_start, 
         t_end);
 
@@ -980,76 +872,82 @@ float shadow_raymarch(Ray ray, vec3 light_dir)
         float step_size_orig = ray_length / cld_max_light_steps;
         float step_size = step_size_orig;
 
+        float d = 0.0;
+
         float march_dst = 0.0;
         for (int i = 0; i < cld_max_light_steps; i++)
         {
             vec3 pos = ray.pos + light_dir*march_dst;
 
             float sigma_s, sigma_t, dist, p_h;
-            bool in_cloud = cloud_density(pos, sigma_s, sigma_t, dist, p_h);
-
+            bool in_cloud = cloud_density(cloud, pos, sigma_s, sigma_t, dist, p_h);
             if (in_cloud) {
-                shadow *= exp(-sigma_t * step_size);
-                if (shadow < 1e-5) {
+                d += sigma_t * step_size;
+
+                if (exp(d) < 1e-5) {
                     shadow = 0.0;
-                    break;
+                    return 0.0;
                 }
             }
 
             step_size = in_cloud ? step_size_orig : max(dist, step_size_orig);
             march_dst += step_size;
         }
+
+        float beer = (exp(-d));
+        float powder = (1.0 - exp(-d * cloud.powder_intsty));
+        float shadow = beer * powder;
         return shadow;
     } else {
         return 0.0;
     }
 }
 
-vec3 int_ambient_light(in float sigma_s, in float sigma_t, in float p_h, in float step_size) 
+vec3 int_ambient_light(Cloud cloud, float sigma_s, float sigma_t, float p_h, float step_size) 
 {
     vec2 uv = clamp(vec2(0.5, p_h), vec2(0.01), vec2(1.0));
-    vec3 ambient_color = texture(irra_tex, uv).rgb * cld_ambient_intsty;
+    vec3 ambient_color = texture(irra_tex, uv).rgb * cloud.ambient_intsty;
     vec3 scatter = sigma_s * ambient_color;
     vec3 s_int = (scatter - scatter * exp(-sigma_t * step_size)) / sigma_t;
 
     return s_int;
 }
 
-vec3 int_direct_light(in Ray ray, in Light light, in float sigma_s, in float sigma_t, in float step_size)
+vec3 int_direct_light(Cloud cloud, Ray ray, Light light, float sigma_s, float sigma_t, float step_size)
 {
     Ray light_ray;
     light_ray.pos = ray.pos;
     light_ray.dir = light.dir;
     
-    float vis = shadow_raymarch(ray, light.dir);
+    float vis = shadow_raymarch(cloud, ray, light.dir);
 
     if (vis > 0.00001) {
         vec3 L = sun_radiation(light_ray, 1.0);
         float mu = dot(light.dir, ray.dir);
 
+        /* Multiple scattering approximation: DOI: 10.1145/2504459.2504518 */
         vec3 s_int = vec3(0.0);
         for (int i = 0; i < 8; i++) 
         {
-            float _pow_i = pow(0.5, i);
-            float _ai = _pow_i; /* attenuation */
-            float _bi = _pow_i; /* contribution */
-            float _ci = _pow_i; /* eccentricity attenuation */
+            float _ai = pow(cloud.atten, i); /* attenuation */
+            float _bi = pow(cloud.contr, i); /* contribution */
+            float _ci = pow(cloud.eccen, i); /* eccentricity attenuation */
 
             float x = phase_mie(mu, cld_G * _ci);
             float y = light.silver_intsty * phase_mie(mu, (0.99 - light.silver_spread) * _ci);
             float _phase = max(x,y);
 
-            /* Multiple scattering approximation: DOI: 10.1145/2504459.2504518 */
             vec3 Li = sigma_s * _bi * L * _phase * exp(-_ai * sigma_t * step_size);
-            s_int += (Li - Li * exp(-sigma_t * step_size)) / sigma_t;
+            s_int += (Li - Li *  exp(-sigma_t * step_size)) / sigma_t;
         }
+
         return s_int * vis;
     } else {
         return vec3(0.0);
     }
 }
 
-vec3 cloud_raymarch(Ray ray, out float depth, out float opacity) 
+vec3 cloud_raymarch(Cloud cloud, Ray ray, out float depth, out float opacity) 
 {
     depth = 0.0;
     opacity = 0.0;
@@ -1061,18 +959,18 @@ vec3 cloud_raymarch(Ray ray, out float depth, out float opacity)
     shell_intersection(
         ray, 
         cld_domain_center + vec3(0, 0, earth_radius), 
-        cld_domain_min_radius, 
-        cld_domain_max_radius, 
+        cloud.radius - 500.0, 
+        cloud.radius + cloud.thickness + 500.0, 
         t_start, 
         t_end);
 
     vec2 uv = gl_FragCoord.xy / img_size.xy;
 
-    float noise_offset = 2.0 * texture(blue_noise, uv*16.0).r - 1.0;
-    noise_offset *= 5000.0;
+    float noise_offset = 2.0 * texture(blue_noise, uv*32.0).r - 1.0;
+    noise_offset *= 500.0;
 
     vec3 start_pos = (ray.pos + ray.dir * (t_start + noise_offset));
-    vec3 end_pos = (ray.pos + ray.dir * t_end);
+    vec3 end_pos = (ray.pos + ray.dir * (t_end + noise_offset));
     float ray_length = distance(start_pos, end_pos);
 
     depth = distance(ray.pos, end_pos);
@@ -1087,27 +985,28 @@ vec3 cloud_raymarch(Ray ray, out float depth, out float opacity)
         ray.pos = start_pos + march_dst * ray.dir;
 
         float sigma_s, sigma_t, dist, p_h;
-        bool in_cloud = cloud_density(ray.pos, sigma_s, sigma_t, dist, p_h);
+        bool in_cloud = cloud_density(cloud, ray.pos, sigma_s, sigma_t, dist, p_h);
 
         if (in_cloud) 
         {
             vec3 direct_light = vec3(0.0);
-            direct_light += (enable_sun && enable_sun_as_light) ? int_direct_light(ray, sun, sigma_s, sigma_t, segment) : vec3(0.0);
-            direct_light += (enable_moon && enable_moon_as_light) ? int_direct_light(ray, moon, sigma_s, sigma_t, segment) * 0.00025 : vec3(0.0);
-            vec3 ambient_light = int_ambient_light(sigma_s, sigma_t, p_h, segment);
+            direct_light += (enable_sun && enable_sun_as_light) ? int_direct_light(cloud, ray, sun, sigma_s, sigma_t, segment) : vec3(0.0);
+            direct_light += (enable_moon && enable_moon_as_light) ? int_direct_light(cloud, ray, moon, sigma_s, sigma_t, segment) * 0.00025 : vec3(0.0);
+            vec3 ambient_light = int_ambient_light(cloud, sigma_s, sigma_t, p_h, segment);
 
             transmittance *= exp(-sigma_t * segment);
             scattered_light += transmittance * (direct_light + ambient_light);
         }
 
-        //if (transmittance < 1e-5) {
-        //    transmittance = 0.0;
-        //    break;
-        //}
+        if (transmittance < 1e-7) {
+            transmittance = 0.0;
+            break;
+        }
 
         segment = in_cloud ? segment_length : max(dist, segment_length);
         march_dst += segment;
     }
+
     opacity = 1.0 - transmittance;
 
     return scattered_light;
@@ -1115,29 +1014,31 @@ vec3 cloud_raymarch(Ray ray, out float depth, out float opacity)
 
 out vec4 fragColor;
 
+vec4 compute_cld(Cloud cloud, Ray ray, vec4 atmo_color, out float cld_opacity)
+{
+    float   cld_depth     = 0.0;
+    vec4    cld_color     = vec4(0.0);
+
+    cld_color = vec4(cloud_raymarch(cloud, ray, cld_depth, cld_opacity), 1.0);
+    float ap_clouds = exp(-cld_depth / cloud.ap_intsty);
+
+    cld_color = vec4(mix(atmo_color.rgb, cld_color.rgb, ap_clouds), 1.0);
+
+    return cld_color;
+}
+
 void main()
 {       
     vec2 uv = gl_FragCoord.xy / img_size.xy;
+
+    /* ------------------------------- Set up ray ------------------------------- */
 
     Ray ray;
     ray.pos = vec3(0.0, 0.0, earth_radius + atmo_camera_offset);
     ray.dir = normalize(sample_spherical_direction(uv));
 
-    /* ------------------------------ Render Clouds ----------------------------- */
-    float cld_opacity, cld_depth;
-    vec4 cld_color = enable_cld ? vec4(cloud_raymarch(ray, cld_depth, cld_opacity), 1.0) : vec4(0.0);
-
-    vec3 cld_point = ray.pos + ray.dir * cld_depth;
-
-    vec4 cld_ap = vec4(0.0);
-    cld_ap += (enable_atm && enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun, cld_point),1.0) : vec4(0.0);
-    cld_ap += (enable_atm && enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon, cld_point),1.0) * 0.000025 : vec4(0.0); 
-
-    float ap_clouds = exp(-cld_depth/cld_ap_intsty);
-
-    cld_color = mix(cld_ap, cld_color, ap_clouds);
-
     /* ---------------------------- Render Atmosphere --------------------------- */
+
     vec4 atmo_color = vec4(0.0);
     atmo_color += (enable_atm && enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun),1.0) : vec4(0.0);
     atmo_color += (enable_atm && enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon),1.0) * 0.000025 : vec4(0.0);    
@@ -1146,25 +1047,53 @@ void main()
 
     /* SSAA. So the moon looks sexy ;) */
     vec4 moon_color = vec4(0.0);
-    if (enable_moon && hit_moon(ray.dir)) {
+    if (enable_moon && hit_moon(ray.dir)) 
+    {
         int aa_level = 8;
-        float pixel_size = 1.0 / (0.5 * img_size.x);
-        float filter_step = pixel_size / float(aa_level);
+        vec2 pixel_size = vec2(1.0) / (0.5 * img_size.xy);
+        vec2 filter_step = pixel_size / vec2(aa_level);
+
+        vec2 uv_offset = uv - pixel_size * 0.5 + filter_step;
+
         for(int i = 0; i <= aa_level; i++) 
         {
             for(int j = 0; j <= aa_level; j++) 
             {
-                float u = (uv.x - float(pixel_size) * 0.5 + filter_step * float(i));
-                float v = (uv.y - float(pixel_size) * 0.5 + filter_step * float(j));
-                ray.dir = sample_spherical_direction(vec2(u,v));
+                vec2 _uv = uv - pixel_size * vec2(0.5) + filter_step * vec2(i,j);
+                ray.dir = sample_spherical_direction(_uv);
                 moon_color += draw_moon(ray);
             }
         }
-        moon_color /= float((aa_level+1)*(aa_level+1));
+        moon_color /= float((aa_level+1)*(aa_level+1)); 
+    }
+    
+    vec4 moon_sun_color = vec4(mix(sun_color.rgb, moon_color.rgb, moon_color.a), 1.0);
+
+    /* ------------------------------ Render Clouds ----------------------------- */
+    
+    vec4 sky_color = vec4(0.0);
+    
+    if (enable_cld) {
+
+        float cld_0_opacity = 0.0;
+        float cld_1_opacity = 0.0;
+
+        vec4 cld_0_color = vec4(0.0);
+        vec4 cld_1_color = vec4(0.0);
+
+        if (enable_cld_0) cld_0_color = compute_cld(cloud_0, ray, atmo_color, cld_0_opacity);
+        if (enable_cld_1) cld_1_color = compute_cld(cloud_1, ray, atmo_color, cld_1_opacity);
+
+        atmo_color += moon_sun_color;
+
+        sky_color = vec4(mix(atmo_color.rgb, cld_0_color.rgb, cld_0_opacity), 1.0);
+        sky_color = vec4(mix(sky_color.rgb, cld_1_color.rgb, cld_1_opacity), 1.0);
+
+    } else {
+        sky_color = atmo_color + moon_sun_color;
     }
 
-    atmo_color += mix(sun_color, moon_color, moon_color.a);
-
     /* --------------------------------- Send it -------------------------------- */
-    fragColor = vec4(mix(atmo_color, cld_color, cld_opacity).rgb,1.0);
+
+    fragColor = sky_color;
 }

@@ -83,41 +83,41 @@ def init_shaders(self):
 
         # -------------------------------- HRDI Shader ------------------------------- #
 
-        with open(dir+"\\shaders\\vertex_shaders\\stratus_env_img.vert", 'r') as file:
+        with open(dir+"/shaders/vertex_shaders/stratus_env_img.vert", 'r') as file:
             vertex_shader = file.read()
-        with open(dir+"\\shaders\\fragment_shaders\\stratus_env_img.frag", 'r') as file:
+        with open(dir+"/shaders/fragment_shaders/stratus_env_img.frag", 'r') as file:
             fragment_shader = file.read()
         new_shader("env_img", vertex_shader, fragment_shader, plane_coords, plane_indices)
 
         # -------------------------------- Sky Shader -------------------------------- #
 
-        with open(dir+"\\shaders\\vertex_shaders\\stratus_sky.vert", 'r') as file:
+        with open(dir+"/shaders/vertex_shaders/stratus_sky.vert", 'r') as file:
             vertex_shader = file.read()
-        with open(dir+"\\shaders\\fragment_shaders\\stratus_sky.frag", 'r') as file:
+        with open(dir+"/shaders/fragment_shaders/stratus_sky.frag", 'r') as file:
             fragment_shader = file.read()
         new_shader("sky", vertex_shader, fragment_shader, plane_coords, plane_indices)
 
         # ----------------------------- Irradiance Shader ---------------------------- #
 
-        with open(dir+"\\shaders\\vertex_shaders\\stratus_irra.vert", 'r') as file:
+        with open(dir+"/shaders/vertex_shaders/stratus_irra.vert", 'r') as file:
             vertex_shader = file.read()
-        with open(dir+"\\shaders\\fragment_shaders\\stratus_irra.frag", 'r') as file:
+        with open(dir+"/shaders/fragment_shaders/stratus_irra.frag", 'r') as file:
             fragment_shader = file.read()
         new_shader("sky_irra", vertex_shader, fragment_shader, plane_coords, plane_indices)
 
         # ------------------------------ Viewport Shader ----------------------------- #
         
-        with open(dir+"\\shaders\\vertex_shaders\\stratus_viewport.vert", 'r') as file:
+        with open(dir+"/shaders/vertex_shaders/stratus_viewport.vert", 'r') as file:
             vertex_shader = file.read()
-        with open(dir+"\\shaders\\fragment_shaders\\stratus_viewport.frag", 'r') as file:
+        with open(dir+"/shaders/fragment_shaders/stratus_viewport.frag", 'r') as file:
             fragment_shader = file.read()
         new_shader("viewport", vertex_shader, fragment_shader, plane_coords, plane_indices)
 
         # ------------------------------- Screen Shader ------------------------------ #
 
-        with open(dir+"\\shaders\\vertex_shaders\\stratus_screen.vert", 'r') as file:
+        with open(dir+"/shaders/vertex_shaders/stratus_screen.vert", 'r') as file:
             vertex_shader = file.read()
-        with open(dir+"\\shaders\\fragment_shaders\\stratus_screen.frag", 'r') as file:
+        with open(dir+"/shaders/fragment_shaders/stratus_screen.frag", 'r') as file:
             fragment_shader = file.read()
         new_shader("screen", vertex_shader, fragment_shader, cube_coords, cube_indices)
 
@@ -131,22 +131,22 @@ def init_textures(self):
         bgl.glGenTextures(globals.NMB_NOISE_TEXTURES, globals.NOISE_TEXTURES)
         bgl.glGenTextures(globals.NMB_MOON_TEXTURES, globals.MOON_TEXTURES)
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_64.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_64.png", check_existing=True)
         bgl_texture_from_image(img, (64, 64, 64), globals.NOISE_TEXTURES[0])
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_128.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_128.png", check_existing=True)
         bgl_texture_from_image(img, (128, 128, 128), globals.NOISE_TEXTURES[1])
         
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_tex_2048.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_2048.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.NOISE_TEXTURES[2])
 
-        img = bpy.data.images.load(dir+"\\textures\\noise\\noise_blue_128.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/noise_blue_128.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.NOISE_TEXTURES[3])
         
-        img = bpy.data.images.load(dir+"\\textures\\moon\\moon_albedo.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/moon/moon_albedo.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.MOON_TEXTURES[0])
 
-        img = bpy.data.images.load(dir+"\\textures\\moon\\moon_normal.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/moon/moon_normal.png", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.MOON_TEXTURES[1])
 
         globals.INITIALIZED_TEXTURES = True

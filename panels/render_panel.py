@@ -46,10 +46,12 @@ class STRATUS_RenderProperties(PropertyGroup):
     ]
 
     tile_size = [
-        ('0', "512", '512 x 512', '', 512),
-        ('1', "1024", '1024 x 1024', '', 1024),
-        ('2', "2048", '2048 x 2048', '', 2048),
-        ('3', "4096", '4096 x 4096', '', 4096),
+        ('0', "128", '128 x 128', '', 128),
+        ('1', "256", '256 x 256', '', 256),
+        ('2', "512", '512 x 512', '', 512),
+        ('3', "1024", '1024 x 1024', '', 1024),
+        ('4', "2048", '2048 x 2048', '', 2048),
+        ('5', "4096", '4096 x 4096', '', 4096),
     ]
     
     pixel_size = [
@@ -60,8 +62,8 @@ class STRATUS_RenderProperties(PropertyGroup):
     ]
 
     env_img_strength: FloatProperty(
-        name = "env_img_strength",
-        description = "A float property",
+        name = "Environment Image Strength",
+        description = "Strength of background node in World shader.",
         default = 0.1,
         min = 0.0,
         update=update_env_img_strength
@@ -84,21 +86,21 @@ class STRATUS_RenderProperties(PropertyGroup):
     max_steps_render: IntProperty(
         name = "Max Steps",
         description="Maximum number of steps before giving up.",
-        default=1024,
+        default=300,
         min= 2
     )
 
     max_light_steps_render: IntProperty(
         name = "Max Light Steps",
         description="Maximum number of steps before giving up.",
-        default=128,
+        default=64,
         min= 2
     ) 
 
     max_steps_viewport: IntProperty(
         name = "Max Steps",
         description="Maximum number of steps before giving up.",
-        default=300,
+        default=150,
         min= 2
     )    
     
@@ -113,7 +115,7 @@ class STRATUS_RenderProperties(PropertyGroup):
         name = "Pixel Size",
         items=pixel_size,
         description="Pixel size for viewport rendering.",
-        default="1"
+        default="4"
     )
 
     enable_bicubic: BoolProperty(
@@ -167,7 +169,7 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
 
         col_0 = layout.column()
         col_0.label(text="Environment Texture Size")
-        col_0.prop(prop, "env_img_render_size")
+        col_0.prop(prop, "env_img_render_size", text="")
 
         layout.separator()
 

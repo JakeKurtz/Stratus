@@ -18,25 +18,26 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
-import bgl
-import ctypes
 
 from .. import globals
 from .utils.env_img_utils import ENVImage
 from .utils.init_utils import init_shaders, init_textures, init_world_node_tree
 from .utils.general_utils import new_offscreen_fbo, refresh_viewers
-from .utils.draw_utils import draw_env_img, draw_irra_map, pre_draw_viewport, post_draw_viewport
+from .utils.draw_utils import draw_env_img, draw_irra_map, pre_draw_viewport, post_draw_viewport, update_viewport_offscreen
 
 class STRATUS_OT_viewport_editor(bpy.types.Operator):
     bl_idname = "stratus.viewport_editor"
     bl_label = "Stratus Viewport Editor"
 
+    _fbo_viewport = None
+    _viewport_texture = None
+
     _offscreen_viewport = None
     _offscreen_sky = None
     _offscreen_irra = None
 
-    _monitor_width = 0
-    _monitor_height = 0
+    _scr_width = 0
+    _scr_height = 0
 
     _handle_pre_draw = None
     _handle_post_draw = None
@@ -139,17 +140,10 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
             init_shaders(self)
             init_world_node_tree(self)
 
-            self._monitor_width = ctypes.windll.user32.GetSystemMetrics(0)
-            self._monitor_height = ctypes.windll.user32.GetSystemMetrics(1)
-
-            self._offscreen_viewport = new_offscreen_fbo(self._monitor_width, self._monitor_height)
+            update_viewport_offscreen(self, context)
+        
             self._offscreen_sky = new_offscreen_fbo(globals.IRRA_WIDTH, globals.IRRA_HEIGHT)
             self._offscreen_irra = new_offscreen_fbo(globals.IRRA_WIDTH, globals.IRRA_HEIGHT)
-
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, self._offscreen_viewport.color_texture)
-            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_NEAREST)
-            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_NEAREST)
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
             
             if not (self._offscreen_viewport and self._offscreen_sky and self._offscreen_irra):
                 self.report({'ERROR'}, "STRATUS: error initializing offscreen buffer. More details in the console")

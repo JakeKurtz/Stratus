@@ -18,7 +18,6 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
-import functools
 from datetime import datetime
 
 from .. import globals
@@ -61,8 +60,7 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
     @staticmethod
     def _handle_remove(self):
         if self._handle_pre_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle_pre_draw, 'WINDOW')        
-
+            bpy.types.SpaceView3D.draw_handler_remove(self._handle_pre_draw, 'WINDOW')
         self._handle_pre_draw = None
 
     def invoke(self, context, event):
@@ -81,7 +79,7 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
             init_textures(self)
             init_shaders(self)
             init_world_node_tree(self)
-    
+
             if prop.enable_tiling:
                 i = int(prop.render_tile_size)
                 tile_size = prop.tile_size[i][4]
@@ -97,45 +95,82 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
                 self.report({'ERROR'}, "STRATUS: error initializing offscreen buffer. More details in the console")
                 return {'CANCELLED'}
 
-
             STRATUS_OT_bake_env_img._handle_add(self, context)
             STRATUS_OT_bake_env_img._is_enabled = True
 
             self.report({'INFO'}, "STRATUS: baking "+prop.env_img_render_size+"K texture.")
             self._start_time = datetime.now()
 
-            self._timer = context.window_manager.event_timer_add(0.016, window=context.window)
+            #self._timer = context.window_manager.event_timer_add(0.016, window=context.window)
             context.window_manager.modal_handler_add(self)
+            '''
+            draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
+            irra_tex = self._offscreen_irra.color_texture
+            while(not self._bake_done):
+                draw_env_img(self._env_img, irra_tex, 'RENDER')
+                self._bake_done = self._env_img.completed()
 
+            #draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
+            #irra_tex = self._offscreen_irra.color_texture
+            #draw_env_img(self._env_img, irra_tex, 'RENDER')
+            #self._bake_done = self._env_img.completed()
+
+            #if self._bake_done:
+            #globals.BAKE_ENV_IMG = False
+
+            self._env_img.save()
+            self._env_img.reset()
+
+            refresh_viewers(context)
+
+            end_time = datetime.now()
+            duration = end_time - self._start_time
+            s = duration.total_seconds()
+
+            self.report({'INFO'}, "STRATUS: bake completed. Took "+'{:02.0f}:{:05.2f}'.format(s % 3600 // 60, s % 60))
+            self.clean_up(context)
+
+            return {'FINISHED'}
+            '''
             return {'RUNNING_MODAL'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.type == 'VIEW_3D'
 
     def modal(self, context, event):
         if context.area:
             context.area.tag_redraw()
 
-        if event.type == 'TIMER':
-            if self._bake_done:
-                globals.BAKE_ENV_IMG = False
-                self._env_img.save()
-                self._env_img.reset()
+        #if event.type == 'TIMER':
+        if event.type in {'ESC'}:
+            self.clean_up(context)
+            return {'FINISHED'}
 
-                refresh_viewers(context)
+        if self._bake_done:
+            self._env_img.save()
+            self._env_img.reset()
 
-                end_time = datetime.now()
-                duration = end_time - self._start_time
-                s = duration.total_seconds()
+            refresh_viewers(context)
 
-                self.report({'INFO'}, "STRATUS: bake completed. Took "+'{:02.0f}:{:05.2f}'.format(s % 3600 // 60, s % 60))
-                self.clean_up(context)
+            end_time = datetime.now()
+            duration = end_time - self._start_time
+            s = duration.total_seconds()
 
-                return {'FINISHED'}
+            self.report({'INFO'}, "STRATUS: bake completed. Took "+'{:02.0f}:{:05.2f}'.format(s % 3600 // 60, s % 60))
+            self.clean_up(context)
+
+            return {'FINISHED'}
+                
         return {'PASS_THROUGH'}
     
     def clean_up(self, context):
+        globals.BAKE_ENV_IMG = False
+
         STRATUS_OT_bake_env_img._handle_remove(self)
         STRATUS_OT_bake_env_img._is_enabled = False
 
         self._offscreen_sky.free()
         self._offscreen_irra.free()
 
-        context.window_manager.event_timer_remove(self._timer)
+        #context.window_manager.event_timer_remove(self._timer)

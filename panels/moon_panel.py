@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
+from math import radians
 from bpy.props import (StringProperty,
                        BoolProperty,
                        IntProperty,
@@ -50,14 +51,14 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_enable_light: BoolProperty(
         name="Light Source",
         description="Enable the Moon as a light source.",
-        default = True,
+        default = False,
         update=update_prop
         )
 
     moon_silver_intsty: FloatProperty(
         name = "Silverline Intensity",
         description="Intensity of the bright outline along the edge of the clouds.",
-        default=1.13,
+        default=3.0,
         min= 0.0,
         update=update_prop
         ) 
@@ -65,7 +66,7 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_silver_spread: FloatProperty(
         name = "Silverline Spread",
         description="The spread of the bright outline along the edge of the clouds.",
-        default=0.12,
+        default=0.02,
         min= 0.0,
         max = 1.0,
         update=update_prop
@@ -74,33 +75,26 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_size: FloatProperty(
         name = "Size",
         description = "Size of Moon.",
-        default = 0.545,
+        default = radians(6.3),
         subtype="ANGLE",
         min = 0.0,
-        max = 90.0,
+        max = radians(90.0),
         update=update_prop
         )
         
     moon_intsty: FloatProperty(
         name = "Intensity",
-        description = "Strength of Moon light.",
+        description = "Strength of Moon disk.",
         default = 1.0,
         min = 0.0,
+        max = 1000.0,
         update=update_prop
         )    
-        
-    moon_disk_intsty: FloatProperty(
-        name = "Intensity",
-        description = "Strength of Moon Disk.",
-        default = 1.0,
-        min = 0.0,
-        update=update_prop
-        )
 
     moon_ambient_intsty: FloatProperty(
         name = "Ambient Intensity",
-        description = "Strength of Moon Face light.",
-        default = 1.0,
+        description = "Strength of Moon ambient light.",
+        default = 0.0,
         min = 0.0,
         max = 0.01,
         update=update_prop
@@ -109,7 +103,7 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_elevation: FloatProperty(
         name = "Elevation",
         description = "Moon Angle from horizon.",
-        default = 15.0,
+        default = radians(13.0),
         subtype="ANGLE",
         update=update_prop
         )
@@ -117,14 +111,14 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_rotation: FloatProperty(
         name = "Rotation",
         description = "Rotation of Moon around zenith.",
-        default = 0.0,
+        default = radians(182.0),
         subtype="ANGLE",
         update=update_prop
         )
 
     moon_use_sun_dir: BoolProperty(
         name="Use Sun",
-        description="Phase is based on direction of the Sun.",
+        description="Phase is based on tthe direction of the Sun.",
         default = False,
         update=update_prop
         )
@@ -132,7 +126,7 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_phase_rotation: FloatProperty(
         name = "Phase Rotation",
         description = "A float property",
-        default = 15.0,
+        default = radians(130.0),
         subtype="ANGLE",
         update=update_prop
         )    
@@ -140,7 +134,7 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_face_rotation: FloatProperty(
         name = "Face Rotation",
         description = "A float property",
-        default = 15.0,
+        default = radians(60.0),
         subtype="ANGLE",
         update=update_prop
         )
@@ -148,7 +142,7 @@ class STRATUS_MoonProperties(PropertyGroup):
     moon_phase: FloatProperty(
         name = "Phase",
         description = "A float property",
-        default = 0.0,
+        default = radians(-125.0),
         subtype="ANGLE",
         update=update_prop
         )
@@ -179,7 +173,7 @@ class STRATUS_PT_moon_panel(Panel):
         layout.separator()
         layout.prop(prop, "moon_enable_light")
         grid_0 = layout.grid_flow(columns=1, align=True)
-        grid_0.prop(prop, "moon_disk_intsty")
+        grid_0.prop(prop, "moon_intsty")
         grid_0.prop(prop, "moon_ambient_intsty", slider=True)
         grid_0.prop(prop, "moon_silver_intsty")
         grid_0.prop(prop, "moon_silver_spread")

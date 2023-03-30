@@ -20,13 +20,12 @@
 import bpy
 import gpu
 import math
-import bgl
 
 from mathutils import Matrix, Vector
 from bl_math import lerp
 
 from ... import globals
-from .general_utils import compute_dir, bgl_uniform_sampler, get_clip_end, look_at
+from .general_utils import compute_dir, bgl_uniform_sampler, get_clip_end, look_at, new_offscreen_fbo
 
 def sun_uniforms(shader):
     prop = bpy.context.scene.sun_props
@@ -35,7 +34,7 @@ def sun_uniforms(shader):
 
     shader.uniform_float("sun_half_angular", prop.sun_size / 2.0)
     shader.uniform_float("sun.dir", compute_dir(prop.sun_elevation, prop.sun_rotation))
-    shader.uniform_float("sun.intsty", prop.sun_disk_intsty)
+    shader.uniform_float("sun.intsty", prop.sun_intsty)
     shader.uniform_float("sun.silver_intsty", prop.sun_silver_intsty)
     shader.uniform_float("sun.silver_spread", prop.sun_silver_spread)
 
@@ -98,7 +97,7 @@ def moon_uniforms(shader):
     shader.uniform_float("moon_ambient_intsty", moon_prop.moon_ambient_intsty)
 
     shader.uniform_float("moon.dir", moon_dir)
-    shader.uniform_float("moon.intsty", moon_prop.moon_disk_intsty)
+    shader.uniform_float("moon.intsty", moon_prop.moon_intsty)
     shader.uniform_float("moon.silver_intsty", moon_prop.moon_silver_intsty)
     shader.uniform_float("moon.silver_spread", moon_prop.moon_silver_spread)
 
@@ -120,30 +119,49 @@ def cloud_uniforms(shader):
 
     shader.uniform_float("cld_G", prop.cld_G)
 
-    ap_intsty = 500000.0 * lerp(0.2, 0.01, prop.cld_ap_intsty)
+    cld_0_ap_intsty = 500000.0 * lerp(0.5, 0.0835, prop.cld_0_ap_intsty)
+    cld_1_ap_intsty = 500000.0 * lerp(0.5, 0.0835, prop.cld_1_ap_intsty)
 
-    shader.uniform_float("cld_ap_intsty", ap_intsty)
-    shader.uniform_float("cld_ambient_intsty", prop.cld_ambient_intsty)
+    cld_0_powder_intsty = lerp(25.0, 1.5, prop.cld_0_powder_intsty)
+    cld_1_powder_intsty = lerp(25.0, 1.5, prop.cld_1_powder_intsty)
 
-    shader.uniform_float("cld_domain_min_radius", cld_domain_radius)
-    shader.uniform_float("cld_domain_max_radius", cld_domain_radius + cld_domain_thickness)
     shader.uniform_float("cld_domain_center", cld_domain_center)
 
     # ---------------------------------------------------------------------------- #
-    shader.uniform_bool("enable_cld_0",             prop.cld_0_enable)
-    shader.uniform_float("cld_0_density",           prop.cld_0_density)
-    shader.uniform_float("cld_0_size",              prop.cld_0_size)
-    shader.uniform_float("cld_0_radius",            prop.cld_0_height + cld_domain_radius)
-    shader.uniform_float("cld_0_height",            prop.cld_0_thickness)
-    shader.uniform_float("cld_0_detail_intsty",     prop.cld_0_detail_intsty)
-    shader.uniform_float("cld_0_shape_intsty",      prop.cld_0_shape_intsty)
-    shader.uniform_float("cld_0_coverage_intsty",   prop.cld_0_coverage_intsty)
 
-    shader.uniform_float("cld_0_coverage_shape",    prop.cld_0_coverage_shape)
+    scale = lerp(29.0, 100.0, prop.cld_0_size);
+    detail_scale = 0.002 / scale;
+    shape_scale = 0.0015 / scale;
+    coverage_scale = 0.00003 / scale;
+    thickness = 100.0 * scale;
 
-    shader.uniform_float("cld_0_detail_offset",     prop.cld_0_detail_offset)
-    shader.uniform_float("cld_0_shape_offset",      prop.cld_0_shape_offset)
-    shader.uniform_float("cld_0_coverage_offset",   prop.cld_0_coverage_offset)
+    shader.uniform_bool("enable_cld_0",                 prop.cld_0_enable)
+
+    shader.uniform_float("cloud_0.radius",              prop.cld_0_height + cld_domain_radius)
+    shader.uniform_float("cloud_0.density",             prop.cld_0_density)
+    shader.uniform_float("cloud_0.height",              prop.cld_0_thickness)
+    shader.uniform_float("cloud_0.thickness",           thickness)
+
+    shader.uniform_float("cloud_0.powder_intsty",       cld_0_powder_intsty)
+    shader.uniform_float("cloud_0.ap_intsty",           cld_0_ap_intsty)
+    shader.uniform_float("cloud_0.ambient_intsty",      prop.cld_0_ambient_intsty)
+    shader.uniform_float("cloud_0.coverage_shape",      prop.cld_0_coverage_shape)
+
+    shader.uniform_float("cloud_0.atten",               prop.cld_0_atten)
+    shader.uniform_float("cloud_0.contr",               prop.cld_0_contr)
+    shader.uniform_float("cloud_0.eccen",               prop.cld_0_eccen)
+
+    shader.uniform_float("cloud_0.coverage_scale",      coverage_scale)
+    shader.uniform_float("cloud_0.shape_scale",         shape_scale)
+    shader.uniform_float("cloud_0.detail_scale",        detail_scale)
+
+    shader.uniform_float("cloud_0.coverage_intsty",     prop.cld_0_coverage_intsty)
+    shader.uniform_float("cloud_0.shape_intsty",        -prop.cld_0_shape_intsty)
+    shader.uniform_float("cloud_0.detail_intsty",       -prop.cld_0_detail_intsty)
+
+    shader.uniform_float("cloud_0.coverage_offset",     prop.cld_0_coverage_offset * 100.0)
+    shader.uniform_float("cloud_0.shape_offset",        prop.cld_0_shape_offset * 100.0)
+    shader.uniform_float("cloud_0.detail_offset",       prop.cld_0_detail_offset * 100.0)
 
     cld_0_trans = Matrix.Translation(cld_domain_center + Vector((0,0,6360e3)))
     cld_0_rot = Matrix.Rotation(prop.cld_0_rotation, 4, 'Z')
@@ -151,24 +169,42 @@ def cloud_uniforms(shader):
     cld_0_transform = cld_0_rot @ cld_0_trans
     cld_0_transform.invert()
     
-    shader.uniform_float("cld_0_transform", cld_0_transform)
+    shader.uniform_float("cloud_0.transform", cld_0_transform)
     # ---------------------------------------------------------------------------- #
 
-    shader.uniform_bool("enable_cld_1",              prop.cld_1_enable)
+    scale = lerp(1.0, 7.5, prop.cld_1_size);
+    detail_scale = 0.002 / scale;
+    shape_scale = 0.0008 / scale;
+    coverage_scale = 0.00003 / scale;
+    thickness = 1000 * scale;
 
-    shader.uniform_float("cld_1_density",           prop.cld_1_density)
-    shader.uniform_float("cld_1_size",              prop.cld_1_size)
-    shader.uniform_float("cld_1_radius",            prop.cld_1_height + cld_domain_radius)
-    shader.uniform_float("cld_1_height",            prop.cld_1_thickness)
-    shader.uniform_float("cld_1_detail_intsty",     prop.cld_1_detail_intsty)
-    shader.uniform_float("cld_1_shape_intsty",      prop.cld_1_shape_intsty)
-    shader.uniform_float("cld_1_coverage_intsty",   prop.cld_1_coverage_intsty)
+    shader.uniform_bool("enable_cld_1",                 prop.cld_1_enable)
 
-    shader.uniform_float("cld_1_coverage_shape",    prop.cld_1_coverage_shape)
+    shader.uniform_float("cloud_1.radius",              prop.cld_1_height + cld_domain_radius)
+    shader.uniform_float("cloud_1.density",             prop.cld_1_density)
+    shader.uniform_float("cloud_1.height",              prop.cld_1_thickness)
+    shader.uniform_float("cloud_1.thickness",           thickness)
 
-    shader.uniform_float("cld_1_detail_offset",     prop.cld_1_detail_offset)
-    shader.uniform_float("cld_1_shape_offset",      prop.cld_1_shape_offset)
-    shader.uniform_float("cld_1_coverage_offset",   prop.cld_1_coverage_offset)
+    shader.uniform_float("cloud_1.powder_intsty",       cld_1_powder_intsty)
+    shader.uniform_float("cloud_1.ap_intsty",           cld_1_ap_intsty)
+    shader.uniform_float("cloud_1.ambient_intsty",      prop.cld_1_ambient_intsty)
+    shader.uniform_float("cloud_1.coverage_shape",      prop.cld_1_coverage_shape)
+
+    shader.uniform_float("cloud_1.atten",               prop.cld_1_atten)
+    shader.uniform_float("cloud_1.contr",               prop.cld_1_contr)
+    shader.uniform_float("cloud_1.eccen",               prop.cld_1_eccen)
+
+    shader.uniform_float("cloud_1.coverage_scale",      coverage_scale)
+    shader.uniform_float("cloud_1.shape_scale",         shape_scale)
+    shader.uniform_float("cloud_1.detail_scale",        detail_scale)
+
+    shader.uniform_float("cloud_1.coverage_intsty",     prop.cld_1_coverage_intsty)
+    shader.uniform_float("cloud_1.shape_intsty",        -prop.cld_1_shape_intsty)
+    shader.uniform_float("cloud_1.detail_intsty",       -prop.cld_1_detail_intsty)
+
+    shader.uniform_float("cloud_1.coverage_offset",     prop.cld_1_coverage_offset * 100.0)
+    shader.uniform_float("cloud_1.shape_offset",        prop.cld_1_shape_offset * 100.0)
+    shader.uniform_float("cloud_1.detail_offset",       prop.cld_1_detail_offset * 100.0)
 
     cld_1_trans = Matrix.Translation(cld_domain_center + Vector((0,0,6360e3)))
     cld_1_rot = Matrix.Rotation(prop.cld_1_rotation, 4, 'Z')
@@ -176,17 +212,17 @@ def cloud_uniforms(shader):
     cld_1_transform = cld_1_rot @ cld_1_trans
     cld_1_transform.invert()
     
-    shader.uniform_float("cld_1_transform", cld_1_transform)
-    
-    # ---------------------------------------------------------------------------- #
-    
-    bgl_uniform_sampler(shader, "noise_tex_3D_64", globals.NOISE_TEXTURES[0], 3, 0)
-    bgl_uniform_sampler(shader, "noise_tex_3D_128", globals.NOISE_TEXTURES[1], 3, 1)
-    bgl_uniform_sampler(shader, "noise_tex_2D_2048", globals.NOISE_TEXTURES[2], 2, 2)
-    bgl_uniform_sampler(shader, "blue_noise", globals.NOISE_TEXTURES[3], 2, 3)
+    shader.uniform_float("cloud_1.transform", cld_1_transform)
 
-    bgl_uniform_sampler(shader, "moon_albedo_tex", globals.MOON_TEXTURES[0], 2, 4)
-    bgl_uniform_sampler(shader, "moon_normal_tex", globals.MOON_TEXTURES[1], 2, 5)
+    # ---------------------------------------------------------------------------- #
+
+    bgl_uniform_sampler(shader,     "noise_tex_3D_64",      globals.NOISE_TEXTURES[0],  dim=3, wrap='REPEAT', filter='LINEAR', slot=0)
+    bgl_uniform_sampler(shader,     "noise_tex_3D_128",     globals.NOISE_TEXTURES[1],  dim=3, wrap='REPEAT', filter='LINEAR', slot=1)
+    bgl_uniform_sampler(shader,     "noise_tex_2D_2048",    globals.NOISE_TEXTURES[2],  dim=2, wrap='REPEAT', filter='LINEAR', slot=2)
+    bgl_uniform_sampler(shader,     "blue_noise",           globals.NOISE_TEXTURES[3],  dim=2, wrap='REPEAT', filter='LINEAR', slot=3)
+
+    bgl_uniform_sampler(shader,     "moon_albedo_tex",      globals.MOON_TEXTURES[0],   dim=2, wrap='REPEAT', filter='LINEAR', slot=4)
+    bgl_uniform_sampler(shader,     "moon_normal_tex",      globals.MOON_TEXTURES[1],   dim=2, wrap='REPEAT', filter='LINEAR', slot=5)
 
 def draw_irra_map(fbo_0, fbo_1, render_context):
     sun_prop = bpy.context.scene.sun_props
@@ -227,7 +263,7 @@ def draw_irra_map(fbo_0, fbo_1, render_context):
         _shader = globals.SHADER["sky_irra"]
         _shader.bind()
         _shader.uniform_float("img_size", irra_dim)
-        bgl_uniform_sampler(_shader, "env_tex", fbo_0.color_texture, 2, 0)
+        bgl_uniform_sampler(_shader, "env_tex", fbo_0.color_texture, dim=2, wrap='REPEAT', filter='LINEAR', slot=0)
         globals.BATCH["sky_irra"].draw(_shader)
 
 def draw_env_img(env_img, irra_tex, render_context):
@@ -287,11 +323,23 @@ def draw_env_img(env_img, irra_tex, render_context):
         moon_uniforms(_shader)
         sun_uniforms(_shader)
 
-        bgl_uniform_sampler(_shader, "irra_tex", irra_tex, 2, 6)
+        bgl_uniform_sampler(_shader, "irra_tex", irra_tex, dim=2, wrap='REPEAT', filter='LINEAR', slot=6)
 
         globals.BATCH["env_img"].draw(_shader)
 
     env_img.increment_tile()
+
+def update_viewport_offscreen(self, context):
+    scr_width = context.region.width
+    scr_height = context.region.height
+
+    if (self._scr_width != scr_width) or (self._scr_height != scr_height):
+        self._scr_width = scr_width
+        self._scr_height = scr_height
+
+        if self._offscreen_viewport != None:
+            self._offscreen_viewport.free()
+        self._offscreen_viewport = new_offscreen_fbo(self._scr_width, self._scr_height)
 
 def pre_draw_viewport(self, context, irra_tex):
     cloud_prop = context.scene.cloud_props
@@ -300,11 +348,10 @@ def pre_draw_viewport(self, context, irra_tex):
     moon_prop = context.scene.moon_props
     render_prop = context.scene.render_props
     
-    scr_width = context.region.width
-    scr_height = context.region.height
+    update_viewport_offscreen(self, context)
 
-    tex_width = int(float(scr_width)/float(render_prop.viewport_pixel_size))       
-    tex_height = int(float(scr_height)/float(render_prop.viewport_pixel_size))
+    tex_width = int(float(self._scr_width)/float(render_prop.viewport_pixel_size))       
+    tex_height = int(float(self._scr_height)/float(render_prop.viewport_pixel_size))
     
     with self._offscreen_viewport.bind():
         gpu.state.depth_test_set('NONE')
@@ -337,7 +384,7 @@ def pre_draw_viewport(self, context, irra_tex):
         moon_uniforms(_shader)
         sun_uniforms(_shader)
 
-        bgl_uniform_sampler(_shader, "irra_tex", irra_tex, 2, 6)
+        bgl_uniform_sampler(_shader, "irra_tex", irra_tex, dim=2, wrap='REPEAT', filter='LINEAR', slot=6)
  
         globals.BATCH["viewport"].draw(_shader)
 
@@ -354,12 +401,9 @@ def post_draw_viewport(self, context):
     obj_mat = trans_mat @ scale_mat
 
     proj_view_mat = bpy.context.region_data.perspective_matrix
-    
-    scr_width = context.region.width
-    scr_height = context.region.height
 
-    tex_width = int(float(scr_width)/float(prop.viewport_pixel_size))       
-    tex_height = int(float(scr_height)/float(prop.viewport_pixel_size))
+    tex_width = int(float(self._scr_width)/float(prop.viewport_pixel_size))       
+    tex_height = int(float(self._scr_height)/float(prop.viewport_pixel_size))
 
     gpu.state.depth_test_set('LESS')
 
@@ -368,13 +412,12 @@ def post_draw_viewport(self, context):
 
     _shader.uniform_float("projection", proj_view_mat @ obj_mat)
 
-    _shader.uniform_float("monitor_size", (self._monitor_width, self._monitor_height))
-    _shader.uniform_float("scr_size", (scr_width, scr_height))
+    _shader.uniform_float("scr_size", (self._scr_width, self._scr_height))
     _shader.uniform_float("tex_size", (tex_width, tex_height))
     _shader.uniform_float("gamma", scene.view_settings.gamma)
     _shader.uniform_float("env_img_strength", prop.env_img_strength)
 
-    bgl_uniform_sampler(_shader, "tex", self._offscreen_viewport.color_texture, 2, 0)
+    bgl_uniform_sampler(_shader, "tex", self._offscreen_viewport.color_texture, dim=2, wrap='REPEAT', filter='NEAREST', slot=0)
 
     globals.BATCH["screen"].draw(_shader)
 
