@@ -72,13 +72,6 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         if not STRATUS_OT_viewport_editor.validate():
             return
 
-        #frame_still = abs(globals.CURRENT_FRAME-globals.LAST_FRAME) == 0
-        #frame_same = self._frame_rendered == globals.CURRENT_FRAME
-
-        #if frame_still:# and not frame_same:
-        #    globals.DRAW_ENV_IMG = True
-        #    globals.RESET_ENV_IMG = True
-
         prop = context.scene.render_props
 
         overlay_enabled = context.area.spaces[0].overlay.show_overlays
@@ -113,17 +106,6 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
 
     @staticmethod
     def _handle_add(self, context):
-        '''
-        self._handle_post_draw = bpy.types.SpaceView3D.draw_handler_add(
-                self._post_draw_callback, (self, context),
-                'WINDOW', 'POST_VIEW',
-                )
-
-        self._handle_pre_draw = bpy.types.SpaceView3D.draw_handler_add(
-                self._pre_draw_callback, (self, context),
-                'WINDOW', 'PRE_VIEW',
-                )
-        '''
         self._draw_handles.append((self, bpy.types.SpaceView3D.draw_handler_add(
             self._post_draw_callback, (self, context),
                 'WINDOW', 'POST_VIEW',
