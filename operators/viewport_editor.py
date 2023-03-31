@@ -18,12 +18,22 @@
 # ------------------------------------------------------------------------- #
 
 import bpy
+from bpy.app.handlers import persistent
 
 from .. import globals
 from .utils.env_img_utils import ENVImage
 from .utils.init_utils import init_shaders, init_textures, init_world_node_tree
 from .utils.general_utils import new_offscreen_fbo, refresh_viewers
 from .utils.draw_utils import draw_env_img, draw_irra_map, pre_draw_viewport, post_draw_viewport, update_viewport_offscreen
+
+@persistent
+def post_frame_change_callback(scene):
+    globals.LAST_FRAME = globals.CURRENT_FRAME
+    globals.CURRENT_FRAME = scene.frame_current
+
+    if abs(globals.CURRENT_FRAME-globals.LAST_FRAME) == 0:
+        globals.DRAW_ENV_IMG = True
+        globals.RESET_ENV_IMG = True
 
 class STRATUS_OT_viewport_editor(bpy.types.Operator):
     bl_idname = "stratus.viewport_editor"
@@ -39,21 +49,36 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
     _scr_width = 0
     _scr_height = 0
 
-    _handle_pre_draw = None
-    _handle_post_draw = None
+    _draw_handles = []
+    _handle_post_frame = None
+
+    _frame_rendered = -1
+
     _is_enabled = False
 
     _env_img = None
-
-    # manage draw handler
+    
     @staticmethod
     def _post_draw_callback(self, context):
+        if not STRATUS_OT_viewport_editor.validate():
+            return
+
         overlay_enabled = context.area.spaces[0].overlay.show_overlays
         if overlay_enabled:
             post_draw_viewport(self, context)
 
     @staticmethod
     def _pre_draw_callback(self, context):
+        if not STRATUS_OT_viewport_editor.validate():
+            return
+
+        #frame_still = abs(globals.CURRENT_FRAME-globals.LAST_FRAME) == 0
+        #frame_same = self._frame_rendered == globals.CURRENT_FRAME
+
+        #if frame_still:# and not frame_same:
+        #    globals.DRAW_ENV_IMG = True
+        #    globals.RESET_ENV_IMG = True
+
         prop = context.scene.render_props
 
         overlay_enabled = context.area.spaces[0].overlay.show_overlays
@@ -68,6 +93,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         if globals.RESET_ENV_IMG:
             self._env_img.reset()
             globals.RESET_ENV_IMG = False
+            self._frame_rendered = -1
 
         if ((globals.DRAW_ENV_IMG and not globals.BAKE_ENV_IMG) or overlay_enabled):
             draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'VIEWPORT')
@@ -80,12 +106,14 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
                 globals.REFRESH_VIEWPORT = True
                 self._env_img.save()
                 self._env_img.reset()
+                self._frame_rendered = globals.CURRENT_FRAME
 
         if overlay_enabled:
             pre_draw_viewport(self, context, irra_tex)
 
     @staticmethod
     def _handle_add(self, context):
+        '''
         self._handle_post_draw = bpy.types.SpaceView3D.draw_handler_add(
                 self._post_draw_callback, (self, context),
                 'WINDOW', 'POST_VIEW',
@@ -95,18 +123,33 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
                 self._pre_draw_callback, (self, context),
                 'WINDOW', 'PRE_VIEW',
                 )
+        '''
+        self._draw_handles.append((self, bpy.types.SpaceView3D.draw_handler_add(
+            self._post_draw_callback, (self, context),
+                'WINDOW', 'POST_VIEW',
+        )))
+        self._draw_handles.append((self, bpy.types.SpaceView3D.draw_handler_add(
+            self._pre_draw_callback, (self, context),
+                'WINDOW', 'PRE_VIEW',
+        )))
 
-    @staticmethod
-    def _handle_remove(self):
-        if self._handle_pre_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle_pre_draw, 'WINDOW')        
-        if self._handle_post_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle_post_draw, 'WINDOW')
-
-        self._handle_pre_draw = None
-        self._handle_post_draw = None
+        self._handle_post_frame = bpy.app.handlers.frame_change_pre.append(post_frame_change_callback)
         
-    # operator functions
+    @classmethod
+    def validate(cls):
+        invalids = [(op, handle) for op, handle in cls._draw_handles if repr(op).endswith("invalid>")]
+        valid = not(invalids)
+        
+        while invalids:
+            op, handle = invalids.pop()
+            bpy.types.SpaceView3D.draw_handler_remove(handle, 'WINDOW')
+            cls._draw_handles.remove((op, handle))
+
+        if not valid:
+            cls._is_enabled = False
+
+        return valid
+            
     @classmethod
     def poll(cls, context):
         return context.area.type == 'VIEW_3D'
@@ -159,7 +202,6 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
             return {'RUNNING_MODAL'}
 
     def clean_up(self, context):
-        STRATUS_OT_viewport_editor._handle_remove(self)
         STRATUS_OT_viewport_editor._is_enabled = False
 
         self._offscreen_viewport.free()

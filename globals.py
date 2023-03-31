@@ -48,6 +48,12 @@ SHADER = {}
 global BATCH
 BATCH = {}
 
+global LAST_FRAME
+LAST_FRAME = 0
+
+global CURRENT_FRAME
+CURRENT_FRAME = 0
+
 # ----------------------------------- Flags ---------------------------------- #
 
 global INITIALIZED_SHADERS 
