@@ -55,6 +55,11 @@ float remap(float v, float l1, float h1, float l2, float h2)
     return l2 + (v - l1) * (h2 - l2) / (h1 - l1);
 }
 
+/* Using big numbers causes weird issues with normal mix for some reason.*/
+vec3 _mix(vec3 a, vec3 b, float t) {
+    return saturate(1.0 - t) * a + saturate(t) * b;
+}
+
 vec4 tex_sample(sampler2D tex, vec2 uv)
 {
     return texture(tex, mod(uv, vec2(1.0)));

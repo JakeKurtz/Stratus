@@ -19,13 +19,13 @@
 
 bl_info = {
     "name": "Stratus",
-    "description": "A demo addon",
+    "description": "A tool for generating HDRIs with realistic skys.",
     "author": "Jake Kurtz",
     'license': 'GPL-3.0-only',
     "version": (1, 0, 0),
-    "blender": (3, 3, 0),
-    'location': 'View3D > Tools > Stratus',
-    "wiki_url": "https://github.com/JakeKurtz",
+    "blender": (3, 4, 1),
+    'location': 'View3D > Sidebar > Stratus Tab',
+    "doc_url": "https://jakekurtz.ca",
     "tracker_url": "https://github.com/JakeKurtz",
     "category": "Rendering"
 }

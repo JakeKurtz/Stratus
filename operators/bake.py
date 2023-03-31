@@ -41,8 +41,6 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
     _bake_done = False
     _handle_pre_draw = None
 
-    _timer = None
-
     @staticmethod
     def _pre_draw_callback(self, context):
         draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
@@ -101,37 +99,8 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
             self.report({'INFO'}, "STRATUS: baking "+prop.env_img_render_size+"K texture.")
             self._start_time = datetime.now()
 
-            #self._timer = context.window_manager.event_timer_add(0.016, window=context.window)
             context.window_manager.modal_handler_add(self)
-            '''
-            draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
-            irra_tex = self._offscreen_irra.color_texture
-            while(not self._bake_done):
-                draw_env_img(self._env_img, irra_tex, 'RENDER')
-                self._bake_done = self._env_img.completed()
 
-            #draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
-            #irra_tex = self._offscreen_irra.color_texture
-            #draw_env_img(self._env_img, irra_tex, 'RENDER')
-            #self._bake_done = self._env_img.completed()
-
-            #if self._bake_done:
-            #globals.BAKE_ENV_IMG = False
-
-            self._env_img.save()
-            self._env_img.reset()
-
-            refresh_viewers(context)
-
-            end_time = datetime.now()
-            duration = end_time - self._start_time
-            s = duration.total_seconds()
-
-            self.report({'INFO'}, "STRATUS: bake completed. Took "+'{:02.0f}:{:05.2f}'.format(s % 3600 // 60, s % 60))
-            self.clean_up(context)
-
-            return {'FINISHED'}
-            '''
             return {'RUNNING_MODAL'}
 
     @classmethod
@@ -141,11 +110,6 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
     def modal(self, context, event):
         if context.area:
             context.area.tag_redraw()
-
-        #if event.type == 'TIMER':
-        if event.type in {'ESC'}:
-            self.clean_up(context)
-            return {'FINISHED'}
 
         if self._bake_done:
             self._env_img.save()
@@ -172,5 +136,3 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
 
         self._offscreen_sky.free()
         self._offscreen_irra.free()
-
-        #context.window_manager.event_timer_remove(self._timer)

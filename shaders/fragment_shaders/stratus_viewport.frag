@@ -64,6 +64,11 @@ float remap(float v, float l1, float h1, float l2, float h2)
     return l2 + (v - l1) * (h2 - l2) / (h1 - l1);
 }
 
+/* Using big numbers causes weird issues with normal mix for some reason.*/
+vec3 _mix(vec3 a, vec3 b, float t) {
+    return saturate(1.0 - t) * a + saturate(t) * b;
+}
+
 vec4 tex_sample(sampler2D tex, vec2 uv)
 {
     return texture(tex, mod(uv, vec2(1.0)));
@@ -342,7 +347,7 @@ uniform float moon_ambient_intsty;
 
 uniform mat4 moon_rot_mat;
 
-#define MAX_RADIATION 2e6
+#define MAX_RADIATION 2e31
 /* --------------------------------- Clouds --------------------------------- */
 
 uniform bool enable_cld;
@@ -681,9 +686,10 @@ bool hit_moon(vec3 dir)
     return sphere_intersect(ray, moon_pos, moon_radius, t0, t1);
 }
 
-vec4 draw_moon(Ray ray) 
+vec3 draw_moon(Ray ray, out float opacity) 
 {
-    vec4 color = vec4(0.0);
+    vec3 color = vec3(0.0);
+    opacity = 0.0;
 
     Ray moon_ray = Ray(vec3(0.0), ray.dir);
 
@@ -710,27 +716,28 @@ vec4 draw_moon(Ray ray)
         vec3 L = min(sun_radiation(ray, moon_solid_angle) * 0.00025 * moon.intsty, MAX_RADIATION);
 
         float diff = max(dot(moon_phase_dir, norm), 0.0);
-        color = vec4(L * (diff + moon_ambient_intsty) * texture(moon_albedo_tex, uv).rgb, 1.0);
+        color = L * (diff + moon_ambient_intsty) * texture(moon_albedo_tex, uv).rgb;
+        opacity = 1.0;
     }
     return color;
 }
 
-vec4 draw_sun(Ray ray) 
+vec3 draw_sun(Ray ray) 
 {
-    vec4 color = vec4(0.0);
+    vec3 color = vec3(0.0);
     float min_cos_theta = cos(sun_half_angular);
 
     float cos_theta = dot(ray.dir, sun.dir);
     if (cos_theta >= min_cos_theta) {
-        color = vec4(1.0);
+        color = vec3(1.0);
     } else {
         float offset = min_cos_theta - cos_theta;
         float scale_factor = 3000.0 / (sun_half_angular*2.0);
         float gaussian_bloom = exp(-offset*scale_factor);
-        color = vec4(gaussian_bloom);
+        color = vec3(gaussian_bloom);
     }
 
-    if (color.a > 0.00001) {
+    if (color.x > 0.00001) {
         float sun_solid_angle = M_2PI * (1.0 - cos(0.5 * sun_half_angular));
         vec3 L = min(sun_radiation(ray, sun_solid_angle) * sun.intsty, MAX_RADIATION);
         color.rgb *= L;
@@ -1016,15 +1023,15 @@ out vec4 fragColor;
 
 uniform mat4 inv_vp_mat;
 
-vec4 compute_cld(Cloud cloud, Ray ray, vec4 atmo_color, out float cld_opacity)
+vec3 compute_cld(Cloud cloud, Ray ray, vec3 atmo_color, out float cld_opacity)
 {
     float   cld_depth     = 0.0;
-    vec4    cld_color     = vec4(0.0);
+    vec3    cld_color     = vec3(0.0);
 
-    cld_color = vec4(cloud_raymarch(cloud, ray, cld_depth, cld_opacity), 1.0);
+    cld_color = cloud_raymarch(cloud, ray, cld_depth, cld_opacity);
     float ap_clouds = exp(-cld_depth / cloud.ap_intsty);
 
-    cld_color = vec4(mix(atmo_color.rgb, cld_color.rgb, ap_clouds), 1.0);
+    cld_color = _mix(atmo_color, cld_color, ap_clouds);
 
     return cld_color;
 }
@@ -1051,34 +1058,36 @@ void main()
 
     /* ---------------------------- Render Atmosphere --------------------------- */
 
-    vec4 atmo_color = vec4(0.0);
-    atmo_color += (enable_atm && enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun),1.0) : vec4(0.0);
-    atmo_color += (enable_atm && enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon),1.0) * 0.000025 : vec4(0.0);    
+    precise vec3 atmo_color = vec3(0.0);
+    atmo_color += (enable_atm && enable_sun && enable_sun_as_light) ? atmo_raymarch(ray, sun) : vec3(0.0);
+    atmo_color += (enable_atm && enable_moon && enable_moon_as_light) ? atmo_raymarch(ray, moon) * 0.000025 : vec3(0.0);    
     
-    vec4 sun_color = (enable_sun) ? draw_sun(ray) : vec4(0.0);
-    vec4 moon_color = (enable_moon) ? draw_moon(ray) : vec4(0.0);
+    precise vec3 sun_color = (enable_sun) ? draw_sun(ray) : vec3(0.0);
 
-    vec4 moon_sun_color = vec4(mix(sun_color.rgb, moon_color.rgb, moon_color.a), 1.0);
+    precise float moon_opacity = 0.0;
+    precise vec3 moon_color = (enable_moon) ? draw_moon(ray, moon_opacity) : vec3(0.0);
+
+    precise vec3 moon_sun_color = _mix(sun_color, moon_color, moon_opacity);
 
     /* ------------------------------ Render Clouds ----------------------------- */
     
-    vec4 sky_color = vec4(0.0);
+    precise vec3 sky_color = vec3(0.0);
     
     if (enable_cld) {
 
-        float cld_0_opacity = 0.0;
-        float cld_1_opacity = 0.0;
+        precise float cld_0_opacity = 0.0;
+        precise float cld_1_opacity = 0.0;
 
-        vec4 cld_0_color = vec4(0.0);
-        vec4 cld_1_color = vec4(0.0);
+        precise vec3 cld_0_color = vec3(0.0);
+        precise vec3 cld_1_color = vec3(0.0);
 
         if (enable_cld_0) cld_0_color = compute_cld(cloud_0, ray, atmo_color, cld_0_opacity);
         if (enable_cld_1) cld_1_color = compute_cld(cloud_1, ray, atmo_color, cld_1_opacity);
 
         atmo_color += moon_sun_color;
 
-        sky_color = vec4(mix(atmo_color.rgb, cld_0_color.rgb, cld_0_opacity), 1.0);
-        sky_color = vec4(mix(sky_color.rgb, cld_1_color.rgb, cld_1_opacity), 1.0);
+        sky_color = _mix(atmo_color, cld_0_color, cld_0_opacity);
+        sky_color = _mix(sky_color, cld_1_color, cld_1_opacity);
 
     } else {
         sky_color = atmo_color + moon_sun_color;
@@ -1086,7 +1095,7 @@ void main()
 
     /* --------------------------------- Send it -------------------------------- */
 
-    fragColor = sky_color;
+    fragColor = vec4(sky_color, 1.0);
 }
 
 

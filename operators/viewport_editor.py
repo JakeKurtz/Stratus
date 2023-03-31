@@ -145,6 +145,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
             globals.REFRESH_VIEWPORT = False
 
         if event.type in {'ESC'}:
+            self.report({'INFO'}, "STRATUS: Viewport Editor stopped.")
             self.clean_up(context)
             return {'FINISHED'}
 
