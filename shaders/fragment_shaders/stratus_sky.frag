@@ -29,6 +29,7 @@ uniform vec2 img_size;
 #define M_1_2PI     0.1591549430918953 // 1 / (2pi)
 #define M_1_4PI     0.0795774715459476 // 1 / (4pi)
 #define M_PI_180    0.0174532925199432 // pi / 180
+#define M_180_PI    57.295779513082320 // 180 / pi
 #define M_2PI       6.2831853071795864 // 2pi
 
 struct Ray

@@ -38,6 +38,7 @@ uniform vec2 img_size;
 #define M_1_2PI     0.1591549430918953 // 1 / (2pi)
 #define M_1_4PI     0.0795774715459476 // 1 / (4pi)
 #define M_PI_180    0.0174532925199432 // pi / 180
+#define M_180_PI    57.295779513082320 // 180 / pi
 #define M_2PI       6.2831853071795864 // 2pi
 
 struct Ray
@@ -712,7 +713,7 @@ vec3 draw_moon(Ray ray, out float opacity)
         vec3 B = cross(T, sphere_norm);
         norm = normalize(T*norm.x + B*norm.y + sphere_norm*norm.z);
 
-        float moon_solid_angle = M_2PI * (1.0 - cos(0.5 * moon_half_angular));
+        float moon_solid_angle = M_2PI * (1.0 - cos(moon_half_angular));
         vec3 L = min(sun_radiation(ray, moon_solid_angle) * 0.00025 * moon.intsty, MAX_RADIATION);
 
         float diff = max(dot(moon_phase_dir, norm), 0.0);
@@ -738,7 +739,7 @@ vec3 draw_sun(Ray ray)
     }
 
     if (color.x > 0.00001) {
-        float sun_solid_angle = M_2PI * (1.0 - cos(0.5 * sun_half_angular));
+        float sun_solid_angle = M_2PI * (1.0 - cos(sun_half_angular));
         vec3 L = min(sun_radiation(ray, sun_solid_angle) * sun.intsty, MAX_RADIATION);
         color.rgb *= L;
     }
@@ -1027,9 +1028,15 @@ vec3 compute_cld(Cloud cloud, Ray ray, vec3 atmo_color, out float cld_opacity)
     vec3    cld_color     = vec3(0.0);
 
     cld_color = cloud_raymarch(cloud, ray, cld_depth, cld_opacity);
-    float ap_clouds = exp(-cld_depth / cloud.ap_intsty);
 
-    cld_color = _mix(atmo_color, cld_color, ap_clouds);
+    vec3 cld_point = ray.pos + ray.dir * cld_depth;
+
+    vec3 cld_ap = vec3(0.0);
+    cld_ap += (enable_atm && enable_sun && enable_sun_as_light) ? atmo_raymarch(ray, sun, cld_point) : vec3(0.0);
+    cld_ap += (enable_atm && enable_moon && enable_moon_as_light) ? atmo_raymarch(ray, moon, cld_point) * 0.000025 : vec3(0.0); 
+
+    float ap_clouds = exp(-cld_depth / cloud.ap_intsty);
+    cld_color = _mix(cld_ap, cld_color, ap_clouds);
 
     return cld_color;
 }
@@ -1046,15 +1053,15 @@ void main()
 
    /* ---------------------------- Render Atmosphere --------------------------- */
 
-    precise vec3 atmo_color = vec3(0.0);
+    vec3 atmo_color = vec3(0.0);
     atmo_color += (enable_atm && enable_sun && enable_sun_as_light) ? atmo_raymarch(ray, sun) : vec3(0.0);
     atmo_color += (enable_atm && enable_moon && enable_moon_as_light) ? atmo_raymarch(ray, moon) * 0.000025 : vec3(0.0);    
     
-    precise vec3 sun_color = (enable_sun) ? draw_sun(ray) : vec3(0.0);
+    vec3 sun_color = (enable_sun) ? draw_sun(ray) : vec3(0.0);
 
     /* SSAA. So the moon looks sexy ;) */
-    precise vec3 moon_color = vec3(0.0);
-    precise float moon_opacity = 0.0;
+    vec3 moon_color = vec3(0.0);
+    float moon_opacity = 0.0;
     if (enable_moon && hit_moon(ray.dir)) 
     {
         int aa_level = 8;
@@ -1087,11 +1094,11 @@ void main()
     
     if (enable_cld) {
 
-        precise float cld_0_opacity = 0.0;
-        precise float cld_1_opacity = 0.0;
+        float cld_0_opacity = 0.0;
+        float cld_1_opacity = 0.0;
 
-        precise vec3 cld_0_color = vec3(0.0);
-        precise vec3 cld_1_color = vec3(0.0);
+        vec3 cld_0_color = vec3(0.0);
+        vec3 cld_1_color = vec3(0.0);
 
         if (enable_cld_0) cld_0_color = compute_cld(cloud_0, ray, atmo_color, cld_0_opacity);
         if (enable_cld_1) cld_1_color = compute_cld(cloud_1, ray, atmo_color, cld_1_opacity);

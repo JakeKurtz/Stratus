@@ -19,7 +19,7 @@
 
 bl_info = {
     "name": "Stratus",
-    "description": "A tool for generating HDRIs with realistic skys.",
+    "description": "Generates HDRIs with realistic skys.",
     "author": "Jake Kurtz",
     'license': 'GPL-3.0-only',
     "version": (1, 0, 0),

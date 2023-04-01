@@ -119,8 +119,8 @@ def cloud_uniforms(shader):
 
     shader.uniform_float("cld_G", prop.cld_G)
 
-    cld_0_ap_intsty = 500000.0 * lerp(0.5, 0.0835, prop.cld_0_ap_intsty)
-    cld_1_ap_intsty = 500000.0 * lerp(0.5, 0.0835, prop.cld_1_ap_intsty)
+    cld_0_ap_intsty = 500000.0 * lerp(0.5, 0.04175, prop.cld_0_ap_intsty)
+    cld_1_ap_intsty = 500000.0 * lerp(0.5, 0.04175, prop.cld_1_ap_intsty)
 
     cld_0_powder_intsty = lerp(25.0, 1.5, prop.cld_0_powder_intsty)
     cld_1_powder_intsty = lerp(25.0, 1.5, prop.cld_1_powder_intsty)
