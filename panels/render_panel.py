@@ -29,31 +29,15 @@ from bpy.props import (StringProperty,
 from bpy.types import (Panel,
                        PropertyGroup,
                        )
-                       
+
+from .. import globals
 from .panel_utils import update_env_img_size, update_env_img_strength
 from ..operators.render import STRATUS_OT_render_animation
 from ..operators.bake import STRATUS_OT_bake_env_img
 from ..operators.viewport_editor import STRATUS_OT_viewport_editor
 
 class STRATUS_RenderProperties(PropertyGroup):
-    env_img_size = [
-        ('1', "1K", '1024 x 512', '', 1),
-        ('2', "2K", '2048 x 1024', '', 2),
-        ('4', "4K", '4096 x 2048', '', 4),
-        ('8', "8K", '8192 x 4096', '', 8),
-        ('16', "16K", '16384 x 8192', '', 16),
-        ('24', "24K", '24576 x 12288', '', 24),
-    ]
 
-    tile_size = [
-        ('0', "128", '128 x 128', '', 128),
-        ('1', "256", '256 x 256', '', 256),
-        ('2', "512", '512 x 512', '', 512),
-        ('3', "1024", '1024 x 1024', '', 1024),
-        ('4', "2048", '2048 x 2048', '', 2048),
-        ('5', "4096", '4096 x 4096', '', 4096),
-    ]
-    
     pixel_size = [
         ('1', "1x", 'Render at full resolution', '', 1),
         ('2', "2x", 'Render at 50%% resolution', '', 2),
@@ -70,14 +54,14 @@ class STRATUS_RenderProperties(PropertyGroup):
     ) 
 
     env_img_render_size: EnumProperty(
-        items=env_img_size,
+        items=globals.ENV_IMG_SIZE,
         description="(1024 x 512) * size",
-        default="4",
+        default="1",
         update=update_env_img_size
     )
 
     env_img_viewport_size: EnumProperty(
-        items=env_img_size,
+        items=globals.ENV_IMG_SIZE,
         description="(1024 x 512) * size",
         default="1",
         update=update_env_img_size
@@ -132,7 +116,7 @@ class STRATUS_RenderProperties(PropertyGroup):
 
     render_tile_size: EnumProperty(
         name = "Tile Size",
-        items=tile_size,
+        items=globals.TILE_SIZE,
         description="Tile Size",
         default="2"
     )

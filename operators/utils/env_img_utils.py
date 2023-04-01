@@ -19,11 +19,14 @@
 
 import bpy
 
+from ... import globals
 from .general_utils import new_offscreen_fbo
 
 class ENVImage:
     _width = 1024
     _height = 512
+
+    _max_img_size = 24
 
     _grid_width = 0
     _grid_height = 0
@@ -48,9 +51,10 @@ class ENVImage:
                     self._height, 
                     alpha=True, 
                     float_buffer=True)
-
         self._offscreen = new_offscreen_fbo(self._width, self._height)
         self.set_tile_size(512)
+
+        self._max_img_size = int(float(globals.MAX_TEXTURE_SIZE) / 1024.0) 
 
     def __del__(self):
         self._offscreen.free()
@@ -63,6 +67,9 @@ class ENVImage:
     def set_size(self, size):
         assert type(size) == int or float, "size should be a number, i.e. int or float."
         assert (size >= 0.25 and size <= 24.0), "size should be between the values 0.25 and 24.0"
+        
+        if (size >= self._max_img_size): 
+            size = self._max_img_size
 
         self._width = int(1024.0 * float(size))
         self._height = int(512.0 * float(size))

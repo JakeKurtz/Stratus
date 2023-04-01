@@ -43,6 +43,47 @@ max_tex_img_units = bgl.Buffer(bgl.GL_INT, [1])
 bgl.glGetIntegerv(bgl.GL_MAX_TEXTURE_IMAGE_UNITS, max_tex_img_units)
 MAX_TEXTURE_IMAGE_UNITS = max_tex_img_units[0] - 1
 
+global MAX_TEXTURE_SIZE
+max_tex_size = bgl.Buffer(bgl.GL_INT, [1])
+bgl.glGetIntegerv(bgl.GL_MAX_TEXTURE_SIZE, max_tex_size)
+MAX_TEXTURE_SIZE = max_tex_size[0]
+
+global ENV_IMG_SIZE
+ENV_IMG_SIZE = []
+
+env_img_size = [
+    ('1',   "1K",   '1024 x 512',    '', 1),
+    ('2',   "2K",   '2048 x 1024',   '', 2),
+    ('4',   "4K",   '4096 x 2048',   '', 4),
+    ('8',   "8K",   '8192 x 4096',   '', 8),
+    ('16',  "16K",  '16384 x 8192',  '', 16),
+    ('24',  "24K",  '24576 x 12288', '', 24),
+]
+
+for size in env_img_size:
+    if (int(size[4])*1024) >= MAX_TEXTURE_SIZE:
+        break
+    else:
+        ENV_IMG_SIZE.append(size)
+
+global TILE_SIZE
+TILE_SIZE = []
+
+tile_size = [
+    ('0', "128",  '128 x 128',   '', 128),
+    ('1', "256",  '256 x 256',   '', 256),
+    ('2', "512",  '512 x 512',   '', 512),
+    ('3', "1024", '1024 x 1024', '', 1024),
+    ('4', "2048", '2048 x 2048', '', 2048),
+    ('5', "4096", '4096 x 4096', '', 4096),
+]
+
+for size in tile_size:
+    if int(size[4]) >= MAX_TEXTURE_SIZE:
+        break
+    else:
+        TILE_SIZE.append(size)
+
 global SHADER
 SHADER = {}
 global BATCH

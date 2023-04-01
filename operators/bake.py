@@ -41,8 +41,13 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
     _bake_done = False
     _handle_pre_draw = None
 
+    _draw_handles = []
+
     @staticmethod
     def _pre_draw_callback(self, context):
+        if not STRATUS_OT_bake_env_img.validate():
+            return
+
         draw_irra_map(self._offscreen_sky, self._offscreen_irra, 'RENDER')
         irra_tex = self._offscreen_irra.color_texture
         draw_env_img(self._env_img, irra_tex, 'RENDER')
@@ -50,16 +55,25 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
 
     @staticmethod
     def _handle_add(self, context):
-        self._handle_pre_draw = bpy.types.SpaceView3D.draw_handler_add(
-                self._pre_draw_callback, (self, context),
+        self._draw_handles.append((self, bpy.types.SpaceView3D.draw_handler_add(
+            self._pre_draw_callback, (self, context),
                 'WINDOW', 'PRE_VIEW',
-                )
+        )))
 
-    @staticmethod
-    def _handle_remove(self):
-        if self._handle_pre_draw is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle_pre_draw, 'WINDOW')
-        self._handle_pre_draw = None
+    @classmethod
+    def validate(cls):
+        invalids = [(op, handle) for op, handle in cls._draw_handles if repr(op).endswith("invalid>")]
+        valid = not(invalids)
+        
+        while invalids:
+            op, handle = invalids.pop()
+            bpy.types.SpaceView3D.draw_handler_remove(handle, 'WINDOW')
+            cls._draw_handles.remove((op, handle))
+
+        if not valid:
+            cls._is_enabled = False
+
+        return valid
 
     def invoke(self, context, event):
         if STRATUS_OT_bake_env_img._is_enabled:
@@ -80,7 +94,7 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
 
             if prop.enable_tiling:
                 i = int(prop.render_tile_size)
-                tile_size = prop.tile_size[i][4]
+                tile_size = globals.TILE_SIZE[i][4]
                 self._env_img.enable_tiling()
                 self._env_img.set_tile_size(tile_size)
             else:
@@ -111,6 +125,11 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
         if context.area:
             context.area.tag_redraw()
 
+        if event.type in {'ESC'}:
+            self.report({'INFO'}, "STRATUS: baked stopped.")
+            self.clean_up(context)
+            return {'FINISHED'}
+
         if self._bake_done:
             self._env_img.save()
             self._env_img.reset()
@@ -131,7 +150,6 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
     def clean_up(self, context):
         globals.BAKE_ENV_IMG = False
 
-        STRATUS_OT_bake_env_img._handle_remove(self)
         STRATUS_OT_bake_env_img._is_enabled = False
 
         self._offscreen_sky.free()

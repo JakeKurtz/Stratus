@@ -55,7 +55,6 @@ from .panels.moon_panel import (
     STRATUS_PT_moon_panel)
 from .panels.render_panel import (
     STRATUS_RenderProperties,
-    STRATUS_OT_render_animation,
     STRATUS_PT_render_panel,
     STRATUS_PT_sub_render_panel,
     STRATUS_PT_sub_viewport_panel)
