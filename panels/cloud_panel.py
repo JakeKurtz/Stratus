@@ -93,6 +93,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_0_density_height: FloatProperty(
+        name = "Density Height",
+        description = "Cloud layer density height.",
+        default = 0.45,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )
+
     cld_0_size: FloatProperty(
         name = "Size",
         description="Cloud layer size.",
@@ -262,6 +271,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Density",
         description = "Cloud layer density.",
         default = 0.2,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )
+
+    cld_1_density_height: FloatProperty(
+        name = "Density Height",
+        description = "Cloud layer density height.",
+        default = 0.45,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -467,6 +485,7 @@ class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
         grid_0.label(text="Basic")
 
         grid_0.prop(prop, "cld_0_density", slider=True)
+        grid_0.prop(prop, "cld_0_density_height", slider=True)
         grid_0.prop(prop, "cld_0_size", slider=True)
         grid_0.prop(prop, "cld_0_height", slider=True)
         grid_0.prop(prop, "cld_0_thickness", slider=True)
@@ -477,6 +496,7 @@ class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
         grid_1.prop(prop, "cld_0_powder_intsty", slider=True)
         grid_1.prop(prop, "cld_0_ap_intsty", slider=True)
         grid_1.prop(prop, "cld_0_ambient_intsty")
+        grid_1.prop(prop, "cld_0_atten")
 
         grid_2 = layout.grid_flow(columns=1, align=True)
         grid_2.label(text="Noise")
@@ -510,6 +530,7 @@ class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
         grid_0.label(text="Basic")
 
         grid_0.prop(prop, "cld_1_density", slider=True)
+        grid_0.prop(prop, "cld_1_density_height", slider=True)
         grid_0.prop(prop, "cld_1_size", slider=True)
         grid_0.prop(prop, "cld_1_height", slider=True)
         grid_0.prop(prop, "cld_1_thickness", slider=True)
@@ -520,6 +541,8 @@ class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
         grid_1.prop(prop, "cld_1_powder_intsty", slider=True)
         grid_1.prop(prop, "cld_1_ap_intsty", slider=True)
         grid_1.prop(prop, "cld_1_ambient_intsty")
+
+        grid_1.prop(prop, "cld_1_atten")
 
         grid_2 = layout.grid_flow(columns=1, align=True)
         grid_2.label(text="Noise")

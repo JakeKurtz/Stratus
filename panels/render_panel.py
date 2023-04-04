@@ -71,28 +71,32 @@ class STRATUS_RenderProperties(PropertyGroup):
         name = "Max Steps",
         description="Maximum number of steps before giving up.",
         default=300,
-        min= 2
+        min= 2,
+        max=5000
     )
 
     max_light_steps_render: IntProperty(
         name = "Max Light Steps",
         description="Maximum number of steps before giving up.",
         default=64,
-        min= 2
+        min= 2,
+        max=1000
     ) 
 
     max_steps_viewport: IntProperty(
         name = "Max Steps",
         description="Maximum number of steps before giving up.",
         default=150,
-        min= 2
+        min= 2,
+        max=5000
     )    
     
     max_light_steps_viewport: IntProperty(
         name = "Max Light Steps",
         description="Maximum number of steps before giving up.",
         default=16,
-        min= 2
+        min= 2,
+        max=1000
     )
 
     viewport_pixel_size: EnumProperty(
@@ -122,7 +126,7 @@ class STRATUS_RenderProperties(PropertyGroup):
     )
 
 class STRATUS_PT_render_panel(bpy.types.Panel):
-    bl_label = "Render Settings"
+    bl_label = "Rendering"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"

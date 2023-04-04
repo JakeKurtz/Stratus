@@ -139,12 +139,14 @@ def cloud_uniforms(shader):
 
     shader.uniform_float("cloud_0.radius",              prop.cld_0_height + cld_domain_radius)
     shader.uniform_float("cloud_0.density",             prop.cld_0_density)
+    shader.uniform_float("cloud_0.density_height",      prop.cld_0_density_height)
     shader.uniform_float("cloud_0.height",              prop.cld_0_thickness)
     shader.uniform_float("cloud_0.thickness",           thickness)
 
     shader.uniform_float("cloud_0.powder_intsty",       cld_0_powder_intsty)
     shader.uniform_float("cloud_0.ap_intsty",           cld_0_ap_intsty)
     shader.uniform_float("cloud_0.ambient_intsty",      prop.cld_0_ambient_intsty)
+
     shader.uniform_float("cloud_0.coverage_shape",      prop.cld_0_coverage_shape)
 
     shader.uniform_float("cloud_0.atten",               prop.cld_0_atten)
@@ -173,7 +175,9 @@ def cloud_uniforms(shader):
     # ---------------------------------------------------------------------------- #
 
     scale = lerp(1.0, 7.5, prop.cld_1_size);
-    detail_scale = 0.002 / scale;
+    detail_scale = lerp(0.002, 0.003, prop.cld_1_size) / scale;
+    #detail_scale = 0.002 / scale;
+    #shape_scale = lerp(0.0008, 0.0008, prop.cld_1_size) / scale;
     shape_scale = 0.0008 / scale;
     coverage_scale = 0.00003 / scale;
     thickness = 1000 * scale;
@@ -182,12 +186,14 @@ def cloud_uniforms(shader):
 
     shader.uniform_float("cloud_1.radius",              prop.cld_1_height + cld_domain_radius)
     shader.uniform_float("cloud_1.density",             prop.cld_1_density)
+    shader.uniform_float("cloud_1.density_height",      prop.cld_1_density_height)
     shader.uniform_float("cloud_1.height",              prop.cld_1_thickness)
     shader.uniform_float("cloud_1.thickness",           thickness)
 
     shader.uniform_float("cloud_1.powder_intsty",       cld_1_powder_intsty)
     shader.uniform_float("cloud_1.ap_intsty",           cld_1_ap_intsty)
     shader.uniform_float("cloud_1.ambient_intsty",      prop.cld_1_ambient_intsty)
+
     shader.uniform_float("cloud_1.coverage_shape",      prop.cld_1_coverage_shape)
 
     shader.uniform_float("cloud_1.atten",               prop.cld_1_atten)

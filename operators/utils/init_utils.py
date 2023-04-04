@@ -25,13 +25,21 @@ from .shader_utils import new_shader
 from .general_utils import bgl_texture_from_image, get_dir
 
 def init_world_node_tree(self):
-    if globals.INITIALIZED_NODE_TREE is False:
+
+    world_shader_keys = bpy.data.worlds.keys()
+
+    if globals.INITIALIZED_NODE_TREE is False or (globals.WORLD_SHADER_NAME not in world_shader_keys):
         self.report({'INFO'}, "STRATUS: initializing world node tree.")
         scene = bpy.context.scene
         prop = scene.render_props
 
         # Get the environment node tree of the current scene
-        node_tree = scene.world.node_tree
+        world = bpy.data.worlds.new(name=globals.WORLD_SHADER_NAME)
+        world.use_nodes = True
+
+        scene.world = world
+
+        node_tree = world.node_tree
         nodes = node_tree.nodes
 
         # Clear all nodes
@@ -54,8 +62,8 @@ def init_world_node_tree(self):
 
         # Link all nodes
         links = node_tree.links
-        link = links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
-        link = links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
+        links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
+        links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
 
         globals.INITIALIZED_NODE_TREE = True
 

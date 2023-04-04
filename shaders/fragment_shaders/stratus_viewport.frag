@@ -376,13 +376,14 @@ const float cld_top_roundness = 0.05;
 const float cld_btm_roundness = 0.0;
 
 const float cld_top_density = 0.05;
-const float cld_btm_density = 0.45;
+//const float cld_btm_density = 0.45;
 
 uniform bool enable_bicubic;
 
 struct Cloud {
     float   radius;
     float   density;
+    float   density_height;
     float   height;
     float   thickness;
 
@@ -800,7 +801,7 @@ bool cld_sample(
         float SR_b = saturate(remap(p_h, 0.0, cld_btm_roundness, 0.0, 1.0));
         float SR_t = saturate(remap(p_h, wh*cld_top_roundness, wh, 1.0, 0.0));
         
-        float DR_b = saturate(remap(p_h, 0.0, cld_btm_density, 0.0, 1.0));
+        float DR_b = saturate(remap(p_h, 0.0, cloud.density_height, 0.0, 1.0));
         float DR_t = saturate(remap(p_h, cld_top_density, 1.0, 1.0, 0.0));
             
         float SA = SR_b * SR_t;
@@ -811,9 +812,7 @@ bool cld_sample(
 
         float cld_coverage = remap(CN * cloud.coverage_intsty * SA, 0.0, 1.0, -1.0, 1.0);
         float cld_shape = SN * cloud.shape_intsty;
-        //float cld_shape = mix(SN-1, SN, saturate(p_h*5.0)) * cloud.shape_intsty;
-        float cld_detail = DN * cloud.detail_intsty;
-        //float cld_detail = mix(DN-1, DN, saturate(p_h*5.0)) * cloud.detail_intsty;
+        float cld_detail = mix(0.0, DN, saturate(p_h*5.0)) * cloud.detail_intsty;
 
         cld_shell = sdf_op_sub(cld_coverage, cld_shell);
         cld_shell = clamp(cld_detail + cld_shape, -1.0, 1.0) + cld_shell;
@@ -1002,7 +1001,7 @@ vec3 cloud_raymarch(Cloud cloud, Ray ray, out float depth, out float opacity)
             direct_light += (enable_moon && enable_moon_as_light) ? int_direct_light(cloud, ray, moon, sigma_s, sigma_t, segment) * 0.00025 : vec3(0.0);
             vec3 ambient_light = int_ambient_light(cloud, sigma_s, sigma_t, p_h, segment);
 
-            transmittance *= exp(-sigma_t * segment);
+            transmittance *= exp(-sigma_t * segment * cloud.atten);
             scattered_light += transmittance * (direct_light + ambient_light);
         }
 
