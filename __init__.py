@@ -26,7 +26,6 @@ bl_info = {
     "blender": (3, 4, 1),
     'location': 'View3D > Sidebar > Stratus Tab',
     "doc_url": "https://jakekurtz.ca",
-    "tracker_url": "https://github.com/JakeKurtz",
     "category": "Rendering"
 }
 

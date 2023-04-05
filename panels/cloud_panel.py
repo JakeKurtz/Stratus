@@ -133,7 +133,7 @@ class STRATUS_CloudProperties(PropertyGroup):
     cld_0_powder_intsty: FloatProperty(
         name = "Powder Intensity",
         description = "Intensity of the powder effect.",
-        default = 1.0,
+        default = 0.5,
         min = 0.0,
         max = 1.0,
         update=update_prop
