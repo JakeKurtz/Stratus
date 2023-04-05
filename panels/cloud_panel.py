@@ -162,7 +162,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         description = "",
         default = 0.5,
         max = 10.0,
-        min = 0.0,
+        min = 0.01,
         update=update_prop
         )    
         
@@ -345,7 +345,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         description = "",
         default = 0.5,
         max = 10.0,
-        min = 0.0,
+        min = 0.01,
         update=update_prop
         )    
         
