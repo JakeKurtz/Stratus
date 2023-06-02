@@ -33,6 +33,7 @@ import bpy
 
 from .operators.render import STRATUS_OT_render_animation
 from .operators.bake import STRATUS_OT_bake_env_img
+from .operators.bake_seq import STRATUS_OT_bake_seq
 from .operators.viewport_editor import STRATUS_OT_viewport_editor, STRATUS_OT_kill_viewport_editor
 from .operators.prop_observer import STRATUS_OT_prop_observer
 
@@ -74,11 +75,13 @@ from .panels.moon_panel import (
     STRATUS_PT_moon_panel)
 from .panels.render_panel import (
     STRATUS_RenderProperties,
-    STRATUS_PT_render_panel,
-    STRATUS_PT_sub_render_panel,
-    STRATUS_PT_sub_viewport_panel,
-    STRATUS_PT_viewport_steps,
-    STRATUS_PT_render_steps)
+    STRATUS_PT_render_settings,
+    STRATUS_PT_render,
+    STRATUS_PT_render_performance,
+    STRATUS_PT_render_steps,
+    STRATUS_PT_render_output,
+    STRATUS_PT_viewport,
+    STRATUS_PT_viewport_steps)
 
 classes = (
     STRATUS_CloudProperties, 
@@ -89,6 +92,7 @@ classes = (
     STRATUS_RenderProperties,
 
     STRATUS_OT_bake_env_img,
+    STRATUS_OT_bake_seq,
     STRATUS_OT_render_animation, 
     STRATUS_OT_viewport_editor,
     STRATUS_OT_kill_viewport_editor, 
@@ -118,11 +122,15 @@ classes = (
     STRATUS_PT_sun_panel,
     STRATUS_PT_stars_panel,
     STRATUS_PT_moon_panel,
-    STRATUS_PT_render_panel, 
-    STRATUS_PT_sub_viewport_panel, 
-    STRATUS_PT_sub_render_panel,
+
+    STRATUS_PT_render_settings,
+    STRATUS_PT_viewport,
     STRATUS_PT_viewport_steps,
-    STRATUS_PT_render_steps)
+    STRATUS_PT_render,
+    STRATUS_PT_render_performance,
+    STRATUS_PT_render_steps,
+    STRATUS_PT_render_output
+    )
 
 def register():
     for cls in classes:

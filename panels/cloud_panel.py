@@ -409,7 +409,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         subtype="DISTANCE",
         default=2000,
         min= 500.0,
-        max = 2000.0,
+        max = 6000.0,
         update=update_prop
         )  
           

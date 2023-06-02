@@ -130,3 +130,34 @@ class ENVImage:
 
         bpy.data.images[self._name].scale(self._width, self._height)
         bpy.data.images[self._name].pixels.foreach_set(self._img_buff)
+    
+    def save_to_disk(self, context, filename):
+        prop = context.scene.render_props
+
+        scene = bpy.data.scenes.new("STRATUS_TMP_SCENE")
+        
+        settings = scene.render.image_settings
+
+        settings.color_management = 'FOLLOW_SCENE'
+        settings.file_format = prop.file_format
+        settings.color_mode = prop.color_mode
+        settings.exr_codec = prop.exr_codec
+
+        self._img_buff = self._offscreen.texture_color.read()
+        self._img_buff.dimensions = self._width * self._height * 4
+
+        extension = '.exr' if (prop.file_format in {'OPEN_EXR', 'OPEN_EXR_MULTILAYER'}) else '.hdr'
+        
+        bpy.data.images[self._name].filepath = prop.file_path+filename+extension
+        bpy.data.images[self._name].file_format = prop.file_format
+
+        bpy.data.images[self._name].scale(self._width, self._height)
+        bpy.data.images[self._name].pixels.foreach_set(self._img_buff)
+
+        bpy.data.images[self._name].save_render(prop.file_path+filename+extension, scene=scene)
+
+        print(prop.file_path+filename+extension)
+
+        bpy.data.scenes.remove(scene)
+        
+

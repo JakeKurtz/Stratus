@@ -34,6 +34,7 @@ from .. import globals
 from .panel_utils import update_env_img_size, update_env_img_strength
 from ..operators.render import STRATUS_OT_render_animation
 from ..operators.bake import STRATUS_OT_bake_env_img
+from ..operators.bake_seq import STRATUS_OT_bake_seq
 from ..operators.viewport_editor import STRATUS_OT_viewport_editor, STRATUS_OT_kill_viewport_editor
 
 class STRATUS_RenderProperties(PropertyGroup):
@@ -43,6 +44,42 @@ class STRATUS_RenderProperties(PropertyGroup):
         ('2', "2x", 'Render at 50%% resolution', '', 2),
         ('4', "4x", 'Render at 25%% resolution', '', 4),
         ('8', "8x", 'Render at 12.5%% resolution', '', 8),
+    ]
+
+    color_modes = [
+        ('RGB', 'RGB', '', '', 0),
+        ('RGBA', 'RGBA', '', '', 1)
+    ]
+
+    color_spaces = [
+        ('Filmic Log', 'Filmic Log', '', '', 0),
+        ('Filmic sRGB', 'Filmic sRGB', '', '', 1),
+        ('Linear', 'Linear', '', '', 2),
+        ('Linear ACES', 'Linear ACES', '', '', 3),
+        ('Linear ACEScg', 'Linear ACEScg', '', '', 4),
+        ('Non-Color', 'Non-Color', '', '', 5),
+        ('Raw', 'Raw', '', '', 6),
+        ('sRGB', 'sRGB', '', '', 7),
+        ('XYZ', 'XYZ', '', '', 8),
+    ]
+
+    file_formats = [
+        ('OPEN_EXR_MULTILAYER', "OpenEXR MultiLayer", 'File format to save baked environment texture as: OpenEXR MultiLayer', 'IMAGE_DATA', 0),
+        ('OPEN_EXR', "OpenEXR", 'File format to save baked environment texture as: OpenEXR', 'IMAGE_DATA', 1),
+        ('HDR', "Radiance HDR", 'File format to save baked environment texture as: Radiance HDR', 'IMAGE_DATA', 2),
+    ]
+
+    exr_codecs = [
+        ('DWAB', "DWAB (lossy)", 'Codec settings for OpenEXR: DWAB (lossy)', '', 0),
+        ('DWAA', "DWAA (lossy)", 'Codec settings for OpenEXR: DWAA (lossy)', '', 1),
+        ('B44A', "B44A (lossy)", 'Codec settings for OpenEXR: B44A (lossy)', '', 2),
+        ('B44', "B44 (lossy)", 'Codec settings for OpenEXR: B44 (lossy)', '', 3),
+        ('ZIPS', "ZIPS (lossless)", 'Codec settings for OpenEXR: ZIPS (lossless)', '', 4),
+        ('RLE', "RLE (lossless)", 'Codec settings for OpenEXR: RLE (lossless)', '', 5),
+        ('PIZ', "PIZ (lossless)", 'Codec settings for OpenEXR: PIZ (lossless)', '', 6),
+        ('ZIP', "ZIP (lossless)", 'Codec settings for OpenEXR: ZIP (lossless)', '', 7),
+        ('PXR24', "Pxr24 (lossy)", 'Codec settings for OpenEXR: Pxr24 (lossy)', '', 8),
+        ('NONE', "None", 'Codec settings for OpenEXR: None', '', 9),
     ]
 
     env_img_strength: FloatProperty(
@@ -202,8 +239,41 @@ class STRATUS_RenderProperties(PropertyGroup):
         default="2"
     )
 
-class STRATUS_PT_render_panel(Panel):
-    bl_label = "Rendering"
+    file_path: StringProperty(
+        subtype="FILE_PATH",
+        default='/tmp\\'
+    )
+
+    file_format: EnumProperty(
+        name="File Format",
+        items=file_formats,
+        description="",
+        default="OPEN_EXR"
+    )
+
+    exr_codec: EnumProperty(
+        name="Codec",
+        items=exr_codecs,
+        description="",
+        default="ZIP"
+    )
+
+    color_space: EnumProperty(
+        name="Color Space",
+        items=color_spaces,
+        description="",
+        default='sRGB'
+    )
+
+    color_mode: EnumProperty(
+        name="Color",
+        items=color_modes,
+        description="",
+        default="RGBA"
+    )
+
+class STRATUS_PT_render_settings(Panel):
+    bl_label = "Render Settings"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -214,8 +284,9 @@ class STRATUS_PT_render_panel(Panel):
         prop = context.scene.render_props
 
         layout.prop(prop, "env_img_strength")
-class STRATUS_PT_sub_render_panel(Panel):
-    bl_parent_id = "STRATUS_PT_render_panel"
+
+class STRATUS_PT_render(Panel):
+    bl_parent_id = "STRATUS_PT_render_settings"
     bl_label = "Render"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
@@ -227,6 +298,7 @@ class STRATUS_PT_sub_render_panel(Panel):
         prop = context.scene.render_props
 
         layout.operator(STRATUS_OT_bake_env_img.bl_idname, text="Bake", icon="RENDER_STILL")
+        layout.operator(STRATUS_OT_bake_seq.bl_idname, text="Bake Sequence", icon="RENDER_ANIMATION")
         layout.operator(STRATUS_OT_render_animation.bl_idname, text="Render Animation", icon="RENDER_ANIMATION")
 
         layout.separator()
@@ -237,15 +309,88 @@ class STRATUS_PT_sub_render_panel(Panel):
 
         layout.separator()
 
+        layout.prop(prop, "enable_bicubic")
+
+class STRATUS_PT_render_performance(Panel):
+    bl_parent_id = "STRATUS_PT_render"
+    bl_label = "Performance"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        prop = context.scene.render_props
+
         layout.prop(prop, "enable_tiling")
         col_1 = layout.column()
         col_1.prop(prop, "render_tile_size", text="Tile Size")
         col_1.enabled = prop.enable_tiling
 
-        layout.prop(prop, "enable_bicubic")
-    
-class STRATUS_PT_sub_viewport_panel(Panel):
-    bl_parent_id = "STRATUS_PT_render_panel"
+class STRATUS_PT_render_steps(Panel):
+    bl_parent_id = "STRATUS_PT_render_performance"
+    bl_label = "Steps"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        prop = context.scene.render_props
+
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_steps_render
+        sub.prop(prop, "max_steps_render")
+
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_light_steps_render
+        sub.prop(prop, "max_light_steps_render")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_steps_render")
+
+        grid_0 = layout.grid_flow(columns=1, align=True)
+        grid_0.prop(prop, "cld_0_max_steps_render")
+        grid_0.prop(prop, "cld_1_max_steps_render")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_light_steps_render")
+
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.prop(prop, "cld_0_max_light_steps_render")
+        grid_1.prop(prop, "cld_1_max_light_steps_render")
+
+        grid_0.enabled = prop.enable_separate_steps_render
+        grid_1.enabled = prop.enable_separate_light_steps_render
+
+class STRATUS_PT_render_output(Panel):
+    bl_parent_id = "STRATUS_PT_render"
+    bl_label = "Output"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        prop = context.scene.render_props
+
+        layout.prop(prop, "file_path", text="")
+        layout.prop(prop, "file_format")
+
+        if (prop.file_format in {'OPEN_EXR', 'OPEN_EXR_MULTILAYER'}):
+            if (prop.file_format == 'OPEN_EXR'):
+                col_row = layout.row(align=True)
+                col_row.label(text="Color")
+                col_row.prop(prop, "color_mode", expand=True)
+            layout.prop(prop, "exr_codec")
+
+class STRATUS_PT_viewport(Panel):
+    bl_parent_id = "STRATUS_PT_render_settings"
     bl_label = "Viewport"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
@@ -272,7 +417,7 @@ class STRATUS_PT_sub_viewport_panel(Panel):
         col.prop(prop, "env_img_viewport_size", text="")
 
 class STRATUS_PT_viewport_steps(Panel):
-    bl_parent_id = "STRATUS_PT_sub_viewport_panel"
+    bl_parent_id = "STRATUS_PT_viewport"
     bl_label = "Steps"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
@@ -309,42 +454,3 @@ class STRATUS_PT_viewport_steps(Panel):
 
         grid_0.enabled = prop.enable_separate_steps_viewport
         grid_1.enabled = prop.enable_separate_light_steps_viewport
-class STRATUS_PT_render_steps(Panel):
-    bl_parent_id = "STRATUS_PT_sub_render_panel"
-    bl_label = "Steps"
-    bl_category = "Stratus"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    def draw(self, context):
-        layout = self.layout
-        prop = context.scene.render_props
-
-
-        col = layout.column()
-        sub = col.row()
-        sub.enabled = not prop.enable_separate_steps_render
-        sub.prop(prop, "max_steps_render")
-
-        col = layout.column()
-        sub = col.row()
-        sub.enabled = not prop.enable_separate_light_steps_render
-        sub.prop(prop, "max_light_steps_render")
-
-        layout.separator()
-        layout.prop(prop, "enable_separate_steps_render")
-
-        grid_0 = layout.grid_flow(columns=1, align=True)
-        grid_0.prop(prop, "cld_0_max_steps_render")
-        grid_0.prop(prop, "cld_1_max_steps_render")
-
-        layout.separator()
-        layout.prop(prop, "enable_separate_light_steps_render")
-
-        grid_1 = layout.grid_flow(columns=1, align=True)
-        grid_1.prop(prop, "cld_0_max_light_steps_render")
-        grid_1.prop(prop, "cld_1_max_light_steps_render")
-
-        grid_0.enabled = prop.enable_separate_steps_render
-        grid_1.enabled = prop.enable_separate_light_steps_render
