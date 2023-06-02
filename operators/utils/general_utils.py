@@ -31,14 +31,14 @@ from mathutils import Vector, Matrix
 def refresh_viewers(context):
     # Flipping the shading type, which forces Cycles to update its textures.
     if context.scene.render.engine not in ['BLENDER_EEVEE','BLENDER_WORKBENCH']:
-        wm = bpy.data.window_managers['WinMan']
-        for win in wm.windows :
-            for area in win.screen.areas :
-                if area.type=='VIEW_3D' :
-                    for space in area.spaces :
-                        if space.type == 'VIEW_3D' and space.shading.type == 'RENDERED' :
-                            space.shading.type = 'SOLID'
-                            space.shading.type = 'RENDERED'
+        for wm in bpy.data.window_managers:
+            for win in wm.windows :
+                for area in win.screen.areas :
+                    if area.type=='VIEW_3D' :
+                        for space in area.spaces :
+                            if space.type == 'VIEW_3D' and space.shading.type == 'RENDERED' :
+                                space.shading.type = 'SOLID'
+                                space.shading.type = 'RENDERED'
 
     # Flip some scene property to get the Eevee to update its textures.
     if context.scene.render.engine == 'BLENDER_EEVEE':
