@@ -938,7 +938,7 @@ vec4 draw_stars(Ray ray)
   vec3 L = vec3(0.0);
   float opacity = 0.0;
 
-  if (ray.dir.z < 0.0) return vec4(L, 1.0);
+  if (ray.dir.z < 0.0) return vec4(L, 0.0);
 
   vec3 rd = normalize(vec3(stars_rot_mat * vec4(ray.dir, 0.0)));
 
