@@ -81,6 +81,9 @@ class STRATUS_OT_render_animation (bpy.types.Operator):
         if STRATUS_OT_render_animation._is_enabled:
             return {'FINISHED'}
         else:
+            if globals.VIEWPORT_RUNNING:
+                globals.KILL_VIEWPORT = True
+
             prop = context.scene.render_props
             size = int(prop.env_img_render_size)
 

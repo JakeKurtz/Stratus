@@ -79,6 +79,9 @@ class STRATUS_OT_bake_env_img(bpy.types.Operator):
         if STRATUS_OT_bake_env_img._is_enabled:
             return {'FINISHED'}
         else:
+            if globals.VIEWPORT_RUNNING:
+                globals.KILL_VIEWPORT = True
+
             globals.BAKE_ENV_IMG = True
 
             prop = context.scene.render_props
