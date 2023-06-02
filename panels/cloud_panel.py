@@ -77,6 +77,33 @@ class STRATUS_CloudProperties(PropertyGroup):
 
 # ------------------------- Cloud Layer 0 Properties ------------------------- #
 
+    cld_0_noise_sizes: FloatVectorProperty(
+        name = "cld_0_noise_scale",
+        description="",
+        size = 3,
+        step = 0.01,
+        default=(1,1,1),
+        update=update_prop
+        )
+
+    cld_0_top_roundness: FloatProperty(
+        name = "cld_0_top_roundness",
+        description = "",
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )      
+
+    cld_0_bottom_roundness: FloatProperty(
+        name = "cld_1_bottom_roundness",
+        description = "",
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )    
+
     cld_0_enable: BoolProperty(
         name="",
         description="Enable cirro cloud layer.",
@@ -139,6 +166,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_0_sigma_s: FloatVectorProperty(
+        name = "Absorption",
+        description="",
+        subtype='COLOR',
+        default=(1.0, 1.0, 1.0),
+        min=0.0, max=1.0,
+        update=update_prop
+        )
+
     cld_0_ap_intsty: FloatProperty(
         name = "Atmospheric Perspective Intensity",
         description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
@@ -160,9 +196,9 @@ class STRATUS_CloudProperties(PropertyGroup):
     cld_0_atten: FloatProperty(
         name = "Attenuation",
         description = "",
-        default = 0.5,
-        max = 10.0,
-        min = 0.01,
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
         update=update_prop
         )    
         
@@ -170,7 +206,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Contribution",
         description = "",
         default = 0.5,
-        max = 10.0,
+        max = 1.0,
         min = 0.0,
         update=update_prop
         )
@@ -179,7 +215,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Eccentricity Attenuation",
         description = "",
         default = 0.5,
-        max = 10.0,
+        max = 1.0,
         min = 0.0,
         update=update_prop
         )
@@ -188,7 +224,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Detail Noise Intensity",
         description="Intensity of detail noise applied to cloud layer.",
         default=-0.024,
-        min= -1.0,
+        min= 0.0,
         max = 1.0,
         update=update_prop
         ) 
@@ -197,7 +233,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Shape Noise Intensity",
         description="Intensity of shape noise applied to cloud layer.",
         default=-0.17,
-        min= -1.0,
+        min= 0.0,
         max = 1.0,
         update=update_prop
         ) 
@@ -207,7 +243,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         description="Intensity of coverage noise applied to cloud layer.",
         default=0.87,
         min= 0.0,
-        max = 1.0,
+        max = 5.0,
+        update=update_prop
+        )
+
+    cld_0_curl_octaves: IntProperty(
+        name = "Curl Octaves",
+        description="Intensity of Curl noise applied to cloud layer.",
+        default=0,
+        min= 0,
+        max = 16,
         update=update_prop
         )
     
@@ -215,6 +260,42 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Coverage Shape",
         description = "Interpolates between coverage noise maps.",
         default = 0.36,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )     
+        
+    cld_0_shape_shape: FloatProperty(
+        name = "Shape",
+        description = "Interpolates between noise maps.",
+        default = 0.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        ) 
+    
+    cld_0_detail_shape: FloatProperty(
+        name = "Shape",
+        description = "Interpolates between noise maps.",
+        default = 0.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )     
+        
+    cld_0_shape_inverse: FloatProperty(
+        name = "Inverse",
+        description = "Interpolates between noise maps.",
+        default = 0.0,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        ) 
+
+    cld_0_detail_inverse: FloatProperty(
+        name = "Inverse",
+        description = "Interpolates between noise maps.",
+        default = 0.0,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -260,6 +341,34 @@ class STRATUS_CloudProperties(PropertyGroup):
 
 # ------------------------- Cloud Layer 1 Properties ------------------------- #
 
+    cld_1_noise_sizes: FloatVectorProperty(
+        name = "cld_1_noise_scale",
+        description="",
+        size = 3,
+        step = 0.01,
+        default=(1,1,1),
+        update=update_prop
+        )
+
+    
+    cld_1_top_roundness: FloatProperty(
+        name = "cld_1_top_roundness",
+        description = "",
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )        
+        
+    cld_1_bottom_roundness: FloatProperty(
+        name = "cld_1_bottom_roundness",
+        description = "",
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
+        update=update_prop
+        )    
+
     cld_1_enable: BoolProperty(
         name="",
         description="Enable cumulus cloud layer.",
@@ -271,7 +380,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Density",
         description = "Cloud layer density.",
         default = 0.2,
-        max = 1.0,
+        max = 5.0,
         min = 0.0,
         update=update_prop
         )
@@ -322,6 +431,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_1_sigma_s: FloatVectorProperty(
+        name = "Absorption",
+        description="",
+        subtype='COLOR',
+        default=(1.0, 1.0, 1.0),
+        min=0.0, max=1.0,
+        update=update_prop
+        )
+
     cld_1_ap_intsty: FloatProperty(
         name = "Atmospheric Perspective Intensity",
         description="The effect the atmosphere has on the appearance of the clouds as viewed from a distance.",
@@ -343,9 +461,9 @@ class STRATUS_CloudProperties(PropertyGroup):
     cld_1_atten: FloatProperty(
         name = "Attenuation",
         description = "",
-        default = 0.5,
-        max = 10.0,
-        min = 0.01,
+        default = 0.2,
+        max = 1.0,
+        min = 0.0,
         update=update_prop
         )    
         
@@ -353,7 +471,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Contribution",
         description = "",
         default = 0.5,
-        max = 10.0,
+        max = 1.0,
         min = 0.0,
         update=update_prop
         )
@@ -362,7 +480,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Eccentricity Attenuation",
         description = "",
         default = 0.5,
-        max = 10.0,
+        max = 1.0,
         min = 0.0,
         update=update_prop
         )
@@ -371,7 +489,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Detail Noise Intensity",
         description="Intensity of detail noise applied to cloud layer.",
         default=0.05,
-        min = -1.0,
+        min = 0.0,
         max = 1.0,
         update=update_prop
         ) 
@@ -380,7 +498,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Shape Noise Intensity",
         description="Intensity of shape noise applied to cloud layer.",
         default=0.23,
-        min= -1.0,
+        min = 0.0,
         max = 1.0,
         update=update_prop
         ) 
@@ -389,6 +507,15 @@ class STRATUS_CloudProperties(PropertyGroup):
         name = "Coverage Noise Intensity",
         description="Intensity of coverage noise applied to cloud layer.",
         default=0.62,
+        min= 0.0,
+        max = 5.0,
+        update=update_prop
+        )
+
+    cld_1_curl_intsty: FloatProperty(
+        name = "Curl Intensity",
+        description="Intensity of Curl noise applied to cloud layer.",
+        default=0.0,
         min= 0.0,
         max = 1.0,
         update=update_prop
@@ -441,6 +568,48 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         ) 
 
+    scale_0: FloatProperty(
+        name = "scale_0",
+        description = "",
+        default = 0.35,
+        update=update_prop
+        )
+
+    scale_1: IntProperty(
+        name = "scale_1",
+        description = "",
+        default = 1,
+        min = 1,
+        max = 16,
+        update=update_prop
+        )
+
+    scale_2: FloatProperty(
+        name = "scale_2",
+        description = "",
+        default = 0.8,
+        min = 0.0,
+        max = 1000000.0,
+        update=update_prop
+        )      
+        
+    scale_3: FloatProperty(
+        name = "scale_3",
+        description = "",
+        default = 0.0,
+        min = 0.0,
+        update=update_prop
+        )  
+
+    sigma_s: FloatVectorProperty(
+        name = "sigma_s",
+        description="",
+        subtype='COLOR',
+        default=(1.0, 1.0, 1.0),
+        min=0.0, max=1.0,
+        update=update_prop
+        ) 
+
 class STRATUS_PT_cloud_panel(Panel):
     bl_label = "Clouds"
     bl_category = "Stratus"
@@ -461,7 +630,7 @@ class STRATUS_PT_cloud_panel(Panel):
         render_options.prop(prop, 'cld_show_viewport', icon=icon_vp)
         render_options.prop(prop, 'cld_show_render', icon=icon_r)
 
-class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
+class STRATUS_PT_cloud_layer_0(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
     bl_label = "Cirro Layer"
     bl_category = "Stratus"
@@ -476,37 +645,160 @@ class STRATUS_PT_sub_cloud_layer_0_panel(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-
         layout.enabled = prop.cld_0_enable
 
-        layout.prop(prop, "cld_0_rotation")
+        layout.prop(prop, "cld_1_noise_sizes")
+
+        layout.prop(prop, "scale_0")
+        layout.prop(prop, "scale_1")
+        layout.prop(prop, "scale_3")       
+class STRATUS_PT_cloud_layer_0_transform(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0"
+    bl_label = "Transform"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
 
         grid_0 = layout.grid_flow(columns=1, align=True)
-        grid_0.label(text="Basic")
-
-        grid_0.prop(prop, "cld_0_density", slider=True)
-        grid_0.prop(prop, "cld_0_density_height", slider=True)
-        grid_0.prop(prop, "cld_0_size", slider=True)
-        grid_0.prop(prop, "cld_0_height", slider=True)
-        grid_0.prop(prop, "cld_0_thickness", slider=True)
+        grid_0.label(text="Location")
+        grid_0.prop(prop, "cld_0_coverage_offset", text="")
+        grid_0.prop(prop, "cld_0_height", slider=True, text="Z")
 
         grid_1 = layout.grid_flow(columns=1, align=True)
-        grid_1.label(text="Lighting")
-
-        grid_1.prop(prop, "cld_0_powder_intsty", slider=True)
-        grid_1.prop(prop, "cld_0_ap_intsty", slider=True)
-        grid_1.prop(prop, "cld_0_ambient_intsty")
-        grid_1.prop(prop, "cld_0_atten")
+        grid_1.label(text="Rotation")
+        grid_1.prop(prop, "cld_0_rotation", text="")
 
         grid_2 = layout.grid_flow(columns=1, align=True)
-        grid_2.label(text="Noise")
+        grid_2.label(text="Scale")
+        grid_2.prop(prop, "cld_0_size", slider=True, text="")
+class STRATUS_PT_cloud_layer_0_density(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0"
+    bl_label = "Density"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
 
-        grid_2.prop(prop, "cld_0_detail_intsty", slider=True)
-        grid_2.prop(prop, "cld_0_shape_intsty", slider=True)
-        grid_2.prop(prop, "cld_0_coverage_intsty", slider=True)
-        grid_2.prop(prop, "cld_0_coverage_shape", slider=True)
-        
-class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_density", slider=True)
+        layout.prop(prop, "cld_0_density_height", slider=True)
+class STRATUS_PT_cloud_layer_0_light(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0"
+    bl_label = "Lighting"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_sigma_s")
+        layout.prop(prop, "cld_0_ap_intsty", slider=True)
+        layout.prop(prop, "cld_0_ambient_intsty")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Scattering")
+        grid.prop(prop, "cld_0_atten")
+        grid.prop(prop, "cld_0_contr")
+        grid.prop(prop, "cld_0_eccen")
+class STRATUS_PT_cloud_layer_0_shape(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0"
+    bl_label = "Shaping"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_bottom_roundness", slider=True)
+        layout.prop(prop, "cld_0_top_roundness", slider=True)
+        layout.prop(prop, "cld_0_thickness", slider=True)   
+        layout.prop(prop, "cld_0_curl_octaves", slider=True)  
+class STRATUS_PT_cloud_layer_0_shape_coverage_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
+    bl_label = "Coverage"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_coverage_intsty", slider=True, text="Intensity")
+        layout.prop(prop, "cld_0_coverage_shape", slider=True, text="Shape")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_0_coverage_offset", text="")
+class STRATUS_PT_cloud_layer_0_shape_shape_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
+    bl_label = "Shape"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_shape_intsty", slider=True, text="Intensity")
+        layout.prop(prop, "cld_0_shape_shape", slider=True, text="Shape")
+        layout.prop(prop, "cld_0_shape_inverse", slider=True, text="Inflate")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_0_shape_offset", text="")
+class STRATUS_PT_cloud_layer_0_shape_detail_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
+    bl_label = "Detail"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_0_enable
+
+        layout.prop(prop, "cld_0_detail_intsty", slider=True, text="Intensity")
+        layout.prop(prop, "cld_0_detail_shape", slider=True, text="Shape")
+        layout.prop(prop, "cld_0_detail_inverse", slider=True, text="Inflate")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_0_detail_offset", text="")
+
+class STRATUS_PT_cloud_layer_1(Panel):
     bl_parent_id = "STRATUS_PT_cloud_panel"
     bl_label = "Cumulus Layer"
     bl_category = "Stratus"
@@ -523,38 +815,11 @@ class STRATUS_PT_sub_cloud_layer_1_panel(Panel):
         prop = scene.cloud_props
 
         layout.enabled = prop.cld_1_enable
-
-        layout.prop(prop, "cld_1_rotation")
-
-        grid_0 = layout.grid_flow(columns=1, align=True)
-        grid_0.label(text="Basic")
-
-        grid_0.prop(prop, "cld_1_density", slider=True)
-        grid_0.prop(prop, "cld_1_density_height", slider=True)
-        grid_0.prop(prop, "cld_1_size", slider=True)
-        grid_0.prop(prop, "cld_1_height", slider=True)
-        grid_0.prop(prop, "cld_1_thickness", slider=True)
-
-        grid_1 = layout.grid_flow(columns=1, align=True)
-        grid_1.label(text="Lighting")
-
-        grid_1.prop(prop, "cld_1_powder_intsty", slider=True)
-        grid_1.prop(prop, "cld_1_ap_intsty", slider=True)
-        grid_1.prop(prop, "cld_1_ambient_intsty")
-
-        grid_1.prop(prop, "cld_1_atten")
-
-        grid_2 = layout.grid_flow(columns=1, align=True)
-        grid_2.label(text="Noise")
-
-        grid_2.prop(prop, "cld_1_detail_intsty", slider=True)
-        grid_2.prop(prop, "cld_1_shape_intsty", slider=True)
-        grid_2.prop(prop, "cld_1_coverage_intsty", slider=True)
-        grid_2.prop(prop, "cld_1_coverage_shape", slider=True)
-
-class STRATUS_PT_sub_cloud_layer_0_noise_offsets_panel(Panel):
-    bl_parent_id = "STRATUS_PT_sub_cloud_layer_0_panel"
-    bl_label = "Noise Offsets"
+        layout.prop(prop, "scale_2")
+        layout.prop(prop, "scale_3")
+class STRATUS_PT_cloud_layer_1_transform(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1"
+    bl_label = "Transform"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -564,30 +829,131 @@ class STRATUS_PT_sub_cloud_layer_0_noise_offsets_panel(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-
-        layout.enabled = prop.cld_0_enable
-
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.prop(prop, "cld_0_coverage_offset")
-        grid.prop(prop, "cld_0_shape_offset")
-        grid.prop(prop, "cld_0_detail_offset")
-
-class STRATUS_PT_sub_cloud_layer_1_noise_offsets_panel(Panel):
-    bl_parent_id = "STRATUS_PT_sub_cloud_layer_1_panel"
-    bl_label = "Noise Offsets"
-    bl_category = "Stratus"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        prop = scene.cloud_props
-
         layout.enabled = prop.cld_1_enable
 
+        grid_0 = layout.grid_flow(columns=1, align=True)
+        grid_0.label(text="Location")
+        grid_0.prop(prop, "cld_1_coverage_offset", text="")
+        grid_0.prop(prop, "cld_1_height", slider=True, text="Z")
+
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.label(text="Rotation")
+        grid_1.prop(prop, "cld_1_rotation", text="")
+
+        grid_2 = layout.grid_flow(columns=1, align=True)
+        grid_2.label(text="Scale")
+        grid_2.prop(prop, "cld_1_size", slider=True, text="")
+class STRATUS_PT_cloud_layer_1_density(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1"
+    bl_label = "Density"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+
+        layout.prop(prop, "cld_1_density", slider=True)
+        layout.prop(prop, "cld_1_density_height", slider=True)
+class STRATUS_PT_cloud_layer_1_light(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1"
+    bl_label = "Lighting"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+
+        layout.prop(prop, "cld_1_sigma_s")
+        layout.prop(prop, "cld_1_ap_intsty", slider=True)
+        layout.prop(prop, "cld_1_ambient_intsty")
+
         grid = layout.grid_flow(columns=1, align=True)
-        grid.prop(prop, "cld_1_coverage_offset")
-        grid.prop(prop, "cld_1_shape_offset")
-        grid.prop(prop, "cld_1_detail_offset")
+        grid.label(text="Scattering")
+        grid.prop(prop, "cld_1_atten")
+        grid.prop(prop, "cld_1_contr")
+        grid.prop(prop, "cld_1_eccen")
+class STRATUS_PT_cloud_layer_1_shape(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1"
+    bl_label = "Shaping"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+
+        layout.prop(prop, "cld_1_bottom_roundness", slider=True)
+        layout.prop(prop, "cld_1_top_roundness", slider=True)
+        layout.prop(prop, "cld_1_thickness", slider=True)
+class STRATUS_PT_cloud_layer_1_shape_coverage_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
+    bl_label = "Coverage"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+        
+        layout.prop(prop, "cld_1_coverage_intsty", slider=True, text="Intensity")
+        layout.prop(prop, "cld_1_coverage_shape", slider=True, text="Shape")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_1_coverage_offset", text="")
+class STRATUS_PT_cloud_layer_1_shape_shape_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
+    bl_label = "Shape"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+        
+        layout.prop(prop, "cld_1_shape_intsty", slider=True, text="Intensity")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_1_shape_offset", text="")
+class STRATUS_PT_cloud_layer_1_shape_detail_noise(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
+    bl_label = "Detail"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        layout.enabled = prop.cld_1_enable
+
+        layout.prop(prop, "cld_1_detail_intsty", slider=True, text="Intensity")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Offset")
+        grid.prop(prop, "cld_1_detail_offset", text="")

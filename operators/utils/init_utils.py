@@ -139,13 +139,16 @@ def init_textures(self):
         bgl.glGenTextures(globals.NMB_NOISE_TEXTURES, globals.NOISE_TEXTURES)
         bgl.glGenTextures(globals.NMB_MOON_TEXTURES, globals.MOON_TEXTURES)
 
-        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_64.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/NOISE_TEX_d.tif", check_existing=True)
         bgl_texture_from_image(img, (64, 64, 64), globals.NOISE_TEXTURES[0])
+        
+        #img = bpy.data.images.load(dir+"/textures/noise/noise_tex_shape_128.tif", check_existing=True)
+        #bgl_texture_from_image(img, (128, 128, 128), globals.NOISE_TEXTURES[0])
 
-        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_128.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/NOISE_TEX_s.tif", check_existing=True)
         bgl_texture_from_image(img, (128, 128, 128), globals.NOISE_TEXTURES[1])
         
-        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_2048.png", check_existing=True)
+        img = bpy.data.images.load(dir+"/textures/noise/noise_tex_2048.tif", check_existing=True)
         bgl_texture_from_image(img, (img.size[0], img.size[1]), globals.NOISE_TEXTURES[2])
 
         img = bpy.data.images.load(dir+"/textures/noise/noise_blue_128.png", check_existing=True)

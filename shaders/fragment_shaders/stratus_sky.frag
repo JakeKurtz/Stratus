@@ -17,6 +17,15 @@
 *
 * ------------------------------------------------------------------------- */
 
+/* -------------------------------- Textures -------------------------------- */
+
+uniform sampler3D noise_tex_3D_64;
+uniform sampler3D noise_tex_3D_128;
+uniform sampler2D noise_tex_2D_2048;
+uniform sampler2D blue_noise;
+uniform sampler2D moon_albedo_tex;
+uniform sampler2D moon_normal_tex;
+uniform sampler2D irra_tex;
 /* -------------------------------------------------------------------------- */
 /*                                   UTILITY                                  */
 /* -------------------------------------------------------------------------- */
@@ -58,6 +67,10 @@ float remap(float v, float l1, float h1, float l2, float h2)
 
 /* Using big numbers causes weird issues with normal mix for some reason.*/
 vec3 _mix(vec3 a, vec3 b, float t) {
+    return saturate(1.0 - t) * a + saturate(t) * b;
+}
+
+vec4 _mix(vec4 a, vec4 b, float t) {
     return saturate(1.0 - t) * a + saturate(t) * b;
 }
 
@@ -166,10 +179,30 @@ vec3 sample_spherical_direction(vec2 uv)
     return n;
 }
 
-vec2 sample_spherical_map(const vec3 d)
+vec2 sample_spherical_map(vec3 d)
 {
     vec2 uv = vec2(0.5 - atan(d.z, d.x) * M_1_2PI, 0.5 + asin(d.y) * M_1_PI);
     return uv;
+}
+
+vec3 orthogonal(vec3 v)
+{
+    return abs(v.x) > abs(v.z) ? vec3(-v.y, v.x, 0.0) : vec3(0.0, -v.z, v.y);
+}
+
+vec3 tangent(vec3 N) 
+{
+  vec3 T, B;
+  if(N.x == .0 && N.z == .0) T = vec3(0.,0.,.1);
+  if(N.z == .0) T = vec3(0.,0.,-1.);
+  else 
+  {
+    float l = sqrt(N.x*N.x+N.z*N.z);
+    T.x = N.z/l;
+    T.y = .0;
+    T.z = -N.x/l;
+  }
+  return T;
 }
 
 /* ------------------------------ SDF Functions ----------------------------- */
@@ -215,6 +248,59 @@ bool sphere_intersect(Ray ray, vec3 center, float radius, out float t0, out floa
     return !behind;
 }
 
+/* ---------------------------------- Hash ---------------------------------- */
+
+#define UI0 1597334673U
+#define UI1 3812015801U
+#define UI2 uvec2(UI0, UI1)
+#define UI3 uvec3(UI0, UI1, 2798796415U)
+#define UIF (1.0 / float(0xffffffffU))
+
+float hash11(float n) 
+{ 
+    return fract(sin(n)*43758.5453); 
+}
+
+vec2  hash22(vec2 p) 
+{ 
+    p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); 
+    return fract(sin(p)*43758.5453); 
+}
+
+vec3 hash33(vec3 p)
+{
+    uvec3 q = uvec3(ivec3(p)) * UI3;
+    q = (q.x ^ q.y ^ q.z)*UI3;
+    return vec3(q) * UIF;
+}
+
+/* ---------------------------------- Noise --------------------------------- */
+
+vec4 worley(vec3 uv)
+{    
+    vec3 id = floor(uv);
+    vec3 p = fract(uv);
+    vec4 v = vec4(10000.0, 0.0, 0.0, 0.0);
+
+    for (float x = -1.; x <= 1.; ++x)
+    {
+        for(float y = -1.; y <= 1.; ++y)
+        {
+            for(float z = -1.; z <= 1.; ++z)
+            {
+              vec3 offset = vec3(x, y, z);
+              vec3 h = hash33((id + offset));
+              vec3 d = p - (h + offset);
+
+              float s = smoothstep(-1.0, 1.0, (v.x-length(d))/0.3);
+              v.yzw = mix(v.yzw, h, s);
+              v.x = min(v.x, length(d));
+            }
+        }
+    }
+    return v;
+}
+
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;
@@ -235,7 +321,7 @@ uniform float ozone_density;
 
 const float earth_radius = 6360e3;
 const float atmosphere_radius = 6420e3;
-const float mie_coeff = 2e-5;
+const float mie_coeff = 21e-5;
 
 const float rayleigh_scale_height = 8.0e3;
 const float mie_scale_height = 1.2e3;
@@ -367,6 +453,35 @@ float phase_mie(float mu, float G)
     return (3.0 * (1.0 - sqr_G) * (1.0 + (mu*mu))) / (8.0 * M_PI * (2.0 + sqr_G) * pow((1.0 + sqr_G - 2.0 * G * mu), 1.5));
 }
 
+float phase_hg(float mu, float G)
+{
+    float sqr_G = G*G;
+    return M_1_4PI  * ((1.0 - sqr_G) / pow(1.0 + sqr_G - 2.0 * G * mu, 1.5));
+}
+
+/* https://www.shadertoy.com/view/4sjBDG */
+float phase_mie_numerical(float mu)
+{
+    // This function was optimized to minimize (delta*delta)/reference in order to capture
+    // the low intensity behavior.
+    float bestParams[10];
+    bestParams[0]=9.805233e-06;
+    bestParams[1]=-6.500000e+01;
+    bestParams[2]=-5.500000e+01;
+    bestParams[3]=8.194068e-01;
+    bestParams[4]=1.388198e-01;
+    bestParams[5]=-8.370334e+01;
+    bestParams[6]=7.810083e+00;
+    bestParams[7]=2.054747e-03;
+    bestParams[8]=2.600563e-02;
+    bestParams[9]=-4.552125e-12;
+    
+    float p1 = mu + bestParams[3];
+    vec4 expValues = exp(vec4(bestParams[1] *mu+bestParams[2], bestParams[5] *p1*p1, bestParams[6] *mu, bestParams[9] *mu));
+    vec4 expValWeight= vec4(bestParams[0], bestParams[4], bestParams[7], bestParams[8]);
+    return dot(expValues, expValWeight) * 0.25;
+}
+
 /* ------------------------ Atmosphere volume models ------------------------ */
 
 float density_rayleigh(float height)
@@ -403,31 +518,35 @@ bool surface_intersection(Ray ray)
     return (hit && front);
 }
 
-vec3 atmosphere_intersection(Ray ray)
+vec3 atmosphere_intersection(Ray ray, bool ignore_earth = false)
 {
     
     float t0, t1;
 	bool hit_atmosphere = sphere_intersect(ray, vec3(0.0), atmosphere_radius, t0, t1);
 
-    float s0, s1;
-	bool hit_earth = sphere_intersect(ray, vec3(0.0), earth_radius, s0, s1);
+    if (!ignore_earth) {
+        float s0, s1;
+        bool hit_earth = sphere_intersect(ray, vec3(0.0), earth_radius, s0, s1);
 
-    bool earth_front = (s0 > 0 && s1 > 0);
+        bool earth_front = (s0 > 0 && s1 > 0);
 
-    float t = 0.0;
-    if (hit_earth && earth_front) {
-        t = s0; 
+        float t = 0.0;
+        if (hit_earth && earth_front) {
+            t = s0; 
+        } else {
+            t = t1;
+        }
+        return ray.pos + ray.dir * t;
     } else {
-        t = t1;
+        return ray.pos + ray.dir * t1;
     }
-    return ray.pos + ray.dir * t;
 }
 
 /* ----------------------------- Atmosphere Main ---------------------------- */
 
-vec3 ray_optical_depth(Ray ray)
+vec3 ray_optical_depth(Ray ray, bool ignore_earth = false)
 {
-    vec3 ray_end = atmosphere_intersection(ray);
+    vec3 ray_end = atmosphere_intersection(ray, ignore_earth);
     float ray_length = distance(ray.pos, ray_end);
 
     vec3 segment = ray_length * ray.dir;
@@ -445,7 +564,7 @@ vec3 ray_optical_depth(Ray ray)
     return optical_depth * ray_length;
 }
 
-vec3 atmo_raymarch(Ray ray, Light light) 
+vec4 atmo_raymarch(Ray ray, Light light) 
 {
     /* this code computes single-inscattering along a ray through the atmosphere */
     vec3 ray_end = atmosphere_intersection(ray);
@@ -503,10 +622,10 @@ vec3 atmo_raymarch(Ray ray, Light light)
         }
         march_dst += segment_length;
     }
-    return spec_to_rgb(r_spectrum);
+    return vec4(spec_to_rgb(r_spectrum), 1.0);
 }
 
-vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end) 
+vec4 atmo_raymarch(Ray ray, Light light, vec3 ray_end) 
 {
     /* this code computes single-inscattering along a ray through the atmosphere */
     float ray_length = distance(ray.pos, ray_end);
@@ -564,14 +683,19 @@ vec3 atmo_raymarch(Ray ray, Light light, vec3 ray_end)
         }
         march_dst += segment_length;
     }
-    return spec_to_rgb(r_spectrum);
+    return vec4(spec_to_rgb(r_spectrum), 1.0);
 }
 
-vec3 sun_radiation(Ray ray, float solid_angle)
+vec3 sun_radiation(Ray ray, float solid_angle, bool ignore_earth = false)
 {
-    vec3 optical_depth = ray_optical_depth(ray);
+    vec3 optical_depth = ray_optical_depth(ray, ignore_earth);
 
-    if (!surface_intersection(ray)) {
+    bool hit_surface = false;
+    if (!ignore_earth) {
+        hit_surface = surface_intersection(ray);
+    }
+
+    if (!hit_surface) {
         float r_spectrum[num_wavelengths];
         for (int wl = 0; wl < num_wavelengths; wl++) {
             r_spectrum[wl] = 0.0;
@@ -601,8 +725,8 @@ void main() {
     ray.dir = sample_spherical_direction(uv);
  
     vec4 atmo_color = vec4(0.0);
-    atmo_color += (enable_sun && enable_sun_as_light) ? vec4(atmo_raymarch(ray, sun),1.0) : vec4(0.0);
-    atmo_color += (enable_moon && enable_moon_as_light) ? vec4(atmo_raymarch(ray, moon),1.0) * 0.000025 : vec4(0.0); 
+    atmo_color += (enable_sun && enable_sun_as_light) ? atmo_raymarch(ray, sun) : vec4(0.0);
+    atmo_color += (enable_moon && enable_moon_as_light) ? atmo_raymarch(ray, moon) * 0.000025 : vec4(0.0); 
 
     fragColor = atmo_color;
 }

@@ -35,6 +35,15 @@ def post_frame_change_callback(scene):
         globals.DRAW_ENV_IMG = True
         globals.RESET_ENV_IMG = True
 
+class STRATUS_OT_kill_viewport_editor(bpy.types.Operator):
+    bl_idname = "stratus.kill_viewport_editor"
+    bl_label = "Stratus Kill Viewport Editor"
+
+    def invoke(self, context, event):
+        if globals.VIEWPORT_RUNNING:
+            globals.KILL_VIEWPORT = True
+        return {'FINISHED'}
+
 class STRATUS_OT_viewport_editor(bpy.types.Operator):
     bl_idname = "stratus.viewport_editor"
     bl_label = "Stratus Viewport Editor"
@@ -144,7 +153,9 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
             refresh_viewers(context)
             globals.REFRESH_VIEWPORT = False
 
-        if event.type in {'ESC'}:
+        if event.type in {'ESC'} or globals.KILL_VIEWPORT:
+            globals.VIEWPORT_RUNNING = False
+            globals.KILL_VIEWPORT = False
             self.report({'INFO'}, "STRATUS: Viewport Editor stopped.")
             self.clean_up(context)
             return {'FINISHED'}
@@ -155,6 +166,7 @@ class STRATUS_OT_viewport_editor(bpy.types.Operator):
         if STRATUS_OT_viewport_editor._is_enabled:
             return {'FINISHED'}
         else:
+            globals.VIEWPORT_RUNNING = True
             prop = context.scene.render_props
             size = float(prop.env_img_viewport_size)
 

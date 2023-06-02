@@ -45,12 +45,12 @@ class ENVImage:
     def __init__(self, name):
         self._name = name
         if self._name not in bpy.data.images:
-                bpy.data.images.new(
-                    self._name, 
-                    self._width, 
-                    self._height, 
-                    alpha=True, 
-                    float_buffer=True)
+            bpy.data.images.new(
+                self._name, 
+                self._width, 
+                self._height, 
+                alpha=True, 
+                float_buffer=True)
         self._offscreen = new_offscreen_fbo(self._width, self._height)
         self.set_tile_size(512)
 

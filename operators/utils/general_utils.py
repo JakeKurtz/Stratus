@@ -106,6 +106,12 @@ def new_env_img_image(img_name, width, height):
     bpy.data.images[img_name].scale(width, height)
     return bpy.data.images[img_name]
 
+def new_gpu_buffer(image):
+    width = image.size[0]
+    height = image.size[1]
+    channels = image.channels
+    return gpu.types.Buffer('FLOAT', (width * height * channels), list(image.pixels[:]))
+
 def new_bgl_buffer(image):
     width = image.size[0]
     height = image.size[1]
@@ -131,12 +137,22 @@ def bgl_texture_from_image(image, dim, bindcode):
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
         
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_BASE_LEVEL, 0)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAX_LEVEL, 0)
+        #bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_BASE_LEVEL, 16)
+        #bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAX_LEVEL, 1000)
             
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA16F, dim[0], dim[1], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA8, dim[0], dim[1], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
 
+        '''
+        i = 0
+        _dim = dim[0]
+        while(_dim > 0):
+            bgl.glTexImage2D(bgl.GL_TEXTURE_2D, i, bgl.GL_RGBA8, _dim, _dim, 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+            _dim = math.floor(_dim/2.0)
+            i += 1
+        '''
+        
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+
     elif len(dim) == 3:
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, bindcode)
         
@@ -144,15 +160,37 @@ def bgl_texture_from_image(image, dim, bindcode):
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_REPEAT)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_WRAP_R, bgl.GL_REPEAT)
 
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR_MIPMAP_LINEAR)
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
 
         bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_BASE_LEVEL, 0)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAX_LEVEL, 0)
     
-        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA16F, dim[0], dim[1], dim[2], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 0, bgl.GL_RGBA8, dim[0], dim[1], dim[2], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        #bgl.glTexImage3D(bgl.GL_TEXTURE_3D, 16, bgl.GL_RGBA8, dim[0], dim[1], dim[2], 0, bgl.GL_RGBA, bgl.GL_FLOAT, buffer)
+        '''
+        _i = 0
+        _dim = dim[0]
+        _buffer = new_bgl_buffer(image)
+        _width, _height = image.size
+
+        while(_dim > 0):
+            print(_i, _width, _height)
+            
+            bgl.glTexImage3D(bgl.GL_TEXTURE_3D, _i, bgl.GL_RGBA8, _dim, _dim, _dim, 0, bgl.GL_RGBA, bgl.GL_FLOAT, _buffer)
+            
+            _dim = math.floor(_dim/2.0)
+            
+            image.scale(math.floor(_width/2.0), math.floor(_height/2.0))
+            _width, _height = image.size
+            _buffer = new_bgl_buffer(image)
+
+            _i += 1
+
+        bgl.glTexParameteri(bgl.GL_TEXTURE_3D, bgl.GL_TEXTURE_MAX_LEVEL, _i-1)
+        '''
 
         bgl.glBindTexture(bgl.GL_TEXTURE_3D, 0)
+
     bpy.data.images.remove(image)
 
 def bgl_uniform_sampler(shader, name, texture, dim, wrap, filter, slot):

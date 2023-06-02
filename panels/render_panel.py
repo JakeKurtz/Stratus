@@ -34,7 +34,7 @@ from .. import globals
 from .panel_utils import update_env_img_size, update_env_img_strength
 from ..operators.render import STRATUS_OT_render_animation
 from ..operators.bake import STRATUS_OT_bake_env_img
-from ..operators.viewport_editor import STRATUS_OT_viewport_editor
+from ..operators.viewport_editor import STRATUS_OT_viewport_editor, STRATUS_OT_kill_viewport_editor
 
 class STRATUS_RenderProperties(PropertyGroup):
 
@@ -67,8 +67,43 @@ class STRATUS_RenderProperties(PropertyGroup):
         update=update_env_img_size
     )
 
+    enable_separate_steps_viewport: BoolProperty(
+        name = "Use Separate Steps",
+        description="",
+        default = False,
+    )
+    enable_separate_light_steps_viewport: BoolProperty(
+        name = "Use Separate Light Steps",
+        description="",
+        default = False,
+    )
+    enable_separate_steps_render: BoolProperty(
+        name = "Use Separate Steps",
+        description="",
+        default = False,
+    )
+    enable_separate_light_steps_render: BoolProperty(
+        name = "Use Separate Light Steps",
+        description="",
+        default = False,
+    )
+
     max_steps_render: IntProperty(
         name = "Max Steps",
+        description="Maximum number of steps before giving up.",
+        default=300,
+        min= 2,
+        max=5000
+    )
+    cld_0_max_steps_render: IntProperty(
+        name = "Max Cirrius Steps",
+        description="Maximum number of steps before giving up.",
+        default=300,
+        min= 2,
+        max=5000
+    )
+    cld_1_max_steps_render: IntProperty(
+        name = "Max Cumulus Steps",
         description="Maximum number of steps before giving up.",
         default=300,
         min= 2,
@@ -81,6 +116,20 @@ class STRATUS_RenderProperties(PropertyGroup):
         default=64,
         min= 2,
         max=1000
+    )
+    cld_0_max_light_steps_render: IntProperty(
+        name = "Max Cirrius Light Steps",
+        description="Maximum number of steps before giving up.",
+        default=64,
+        min= 2,
+        max=1000
+    )
+    cld_1_max_light_steps_render: IntProperty(
+        name = "Max Cumulus Light Steps",
+        description="Maximum number of steps before giving up.",
+        default=64,
+        min= 2,
+        max=1000
     ) 
 
     max_steps_viewport: IntProperty(
@@ -89,10 +138,38 @@ class STRATUS_RenderProperties(PropertyGroup):
         default=150,
         min= 2,
         max=5000
-    )    
+    )
+    cld_0_max_steps_viewport: IntProperty(
+        name = "Max Cirrius Steps",
+        description="Maximum number of steps before giving up.",
+        default=150,
+        min= 2,
+        max=5000
+    )
+    cld_1_max_steps_viewport: IntProperty(
+        name = "Max Cumulus Steps",
+        description="Maximum number of steps before giving up.",
+        default=150,
+        min= 2,
+        max=5000
+    )   
     
     max_light_steps_viewport: IntProperty(
         name = "Max Light Steps",
+        description="Maximum number of steps before giving up.",
+        default=16,
+        min= 2,
+        max=1000
+    )
+    cld_0_max_light_steps_viewport: IntProperty(
+        name = "Max Cirrius Light Steps",
+        description="Maximum number of steps before giving up.",
+        default=16,
+        min= 2,
+        max=1000
+    )
+    cld_1_max_light_steps_viewport: IntProperty(
+        name = "Max Cumulus Light Steps",
         description="Maximum number of steps before giving up.",
         default=16,
         min= 2,
@@ -125,7 +202,7 @@ class STRATUS_RenderProperties(PropertyGroup):
         default="2"
     )
 
-class STRATUS_PT_render_panel(bpy.types.Panel):
+class STRATUS_PT_render_panel(Panel):
     bl_label = "Rendering"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
@@ -137,8 +214,7 @@ class STRATUS_PT_render_panel(bpy.types.Panel):
         prop = context.scene.render_props
 
         layout.prop(prop, "env_img_strength")
-
-class STRATUS_PT_sub_render_panel(bpy.types.Panel):
+class STRATUS_PT_sub_render_panel(Panel):
     bl_parent_id = "STRATUS_PT_render_panel"
     bl_label = "Render"
     bl_category = "Stratus"
@@ -167,13 +243,8 @@ class STRATUS_PT_sub_render_panel(bpy.types.Panel):
         col_1.enabled = prop.enable_tiling
 
         layout.prop(prop, "enable_bicubic")
-        
-        layout.separator()
-
-        layout.prop(prop, "max_steps_render")
-        layout.prop(prop, "max_light_steps_render")
-
-class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
+    
+class STRATUS_PT_sub_viewport_panel(Panel):
     bl_parent_id = "STRATUS_PT_render_panel"
     bl_label = "Viewport"
     bl_category = "Stratus"
@@ -185,7 +256,10 @@ class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
         layout = self.layout
         prop = context.scene.render_props
 
-        layout.operator(STRATUS_OT_viewport_editor.bl_idname, text="Start Viewport Editor", icon="RESTRICT_VIEW_OFF")
+        if globals.VIEWPORT_RUNNING:
+            layout.operator(STRATUS_OT_kill_viewport_editor.bl_idname, text="Stop Viewport Editor", icon="CANCEL")
+        else:
+            layout.operator(STRATUS_OT_viewport_editor.bl_idname, text="Start Viewport Editor", icon="RESTRICT_VIEW_OFF")
 
         layout.separator()
 
@@ -197,7 +271,80 @@ class STRATUS_PT_sub_viewport_panel(bpy.types.Panel):
         col.label(text="Environment Texture Size")
         col.prop(prop, "env_img_viewport_size", text="")
 
-        layout.separator()
+class STRATUS_PT_viewport_steps(Panel):
+    bl_parent_id = "STRATUS_PT_sub_viewport_panel"
+    bl_label = "Steps"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
 
-        layout.prop(prop, "max_steps_viewport")
-        layout.prop(prop, "max_light_steps_viewport")
+    def draw(self, context):
+        layout = self.layout
+        prop = context.scene.render_props
+
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_steps_viewport
+        sub.prop(prop, "max_steps_viewport")
+        
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_light_steps_viewport
+        sub.prop(prop, "max_light_steps_viewport")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_steps_viewport")
+
+        grid_0 = layout.grid_flow(columns=1, align=True)
+        grid_0.prop(prop, "cld_0_max_steps_viewport")
+        grid_0.prop(prop, "cld_1_max_steps_viewport")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_light_steps_viewport")
+
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.prop(prop, "cld_0_max_light_steps_viewport")
+        grid_1.prop(prop, "cld_1_max_light_steps_viewport")
+
+        grid_0.enabled = prop.enable_separate_steps_viewport
+        grid_1.enabled = prop.enable_separate_light_steps_viewport
+class STRATUS_PT_render_steps(Panel):
+    bl_parent_id = "STRATUS_PT_sub_render_panel"
+    bl_label = "Steps"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        prop = context.scene.render_props
+
+
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_steps_render
+        sub.prop(prop, "max_steps_render")
+
+        col = layout.column()
+        sub = col.row()
+        sub.enabled = not prop.enable_separate_light_steps_render
+        sub.prop(prop, "max_light_steps_render")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_steps_render")
+
+        grid_0 = layout.grid_flow(columns=1, align=True)
+        grid_0.prop(prop, "cld_0_max_steps_render")
+        grid_0.prop(prop, "cld_1_max_steps_render")
+
+        layout.separator()
+        layout.prop(prop, "enable_separate_light_steps_render")
+
+        grid_1 = layout.grid_flow(columns=1, align=True)
+        grid_1.prop(prop, "cld_0_max_light_steps_render")
+        grid_1.prop(prop, "cld_1_max_light_steps_render")
+
+        grid_0.enabled = prop.enable_separate_steps_render
+        grid_1.enabled = prop.enable_separate_light_steps_render
