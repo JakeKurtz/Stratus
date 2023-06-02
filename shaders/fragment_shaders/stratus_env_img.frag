@@ -1031,6 +1031,12 @@ vec2 sample_spherical_map2(const vec3 d)
     return uv;
 }
 
+float sample_blue_noise()
+{
+    vec2 uv = gl_FragCoord.xy / img_size.xy;
+    return 2.0 * texture(blue_noise, uv*32.0).r - 1.0;
+}
+
 void shell_intersection(Ray ray, vec3 center, float radius_inner, float radius_outer, out float t_start, out float t_end) 
 {
     t_start = 0.0;
@@ -1211,7 +1217,10 @@ float ray_optical_depth(Cloud cloud, Ray ray)
     float segment_length = ray_length / cloud.max_light_steps;
     float segment = segment_length;
 
-    float march_dst = 0.0;
+    float noise_offset = sample_blue_noise();
+    noise_offset *= segment;
+
+    float march_dst = noise_offset;
     for (int i = 0; i < cloud.max_light_steps; i++)
     {
         vec3 pos = start_pos + ray.dir * march_dst;
@@ -1301,23 +1310,21 @@ vec4 cloud_raymarch(Cloud cloud, Ray ray, out float depth)
         t_start, 
         t_end);
 
-    vec2 uv = gl_FragCoord.xy / img_size.xy;
-
-    float noise_offset = 2.0 * texture(blue_noise, uv*32.0).r - 1.0;
-    noise_offset *= 500.0;
-
-    vec3 start_pos = (ray.pos + ray.dir * (t_start + noise_offset));
-    vec3 end_pos = (ray.pos + ray.dir * (t_end + noise_offset));
+    vec3 start_pos = (ray.pos + ray.dir * t_start);
+    vec3 end_pos = (ray.pos + ray.dir * t_end);
     float ray_length = distance(start_pos, end_pos);
 
-    depth = distance(ray.pos, end_pos);
+    depth = ray_length;
 
     if (surface_intersection(ray)) return vec4(scattered_light, opacity);
 
     float segment_length = ray_length / float(cloud.max_steps);
     float segment = segment_length;
 
-    float march_dst = 0.0;
+    float noise_offset = sample_blue_noise();
+    noise_offset *= segment;
+
+    float march_dst = noise_offset;
     for (int i = 0; i < cloud.max_steps; i++) {
         ray.pos = start_pos + march_dst * ray.dir;
 
