@@ -327,15 +327,19 @@ def draw_env_img(env_img, irra_tex, render_context):
     render_prop = bpy.context.scene.render_props
 
     if render_context == 'VIEWPORT':   
-        cld_0_max_steps = render_prop.max_steps_viewport
-        cld_1_max_steps = render_prop.max_steps_viewport
-        cld_0_max_light_steps = render_prop.max_light_steps_viewport
-        cld_1_max_light_steps = render_prop.max_light_steps_viewport
         if (render_prop.enable_separate_steps_viewport):
             cld_0_max_steps = render_prop.cld_0_max_steps_viewport
             cld_1_max_steps = render_prop.cld_1_max_steps_viewport
+        else:
+            cld_0_max_steps = render_prop.max_steps_viewport
+            cld_1_max_steps = render_prop.max_steps_viewport
+
+        if (render_prop.enable_separate_light_steps_viewport):
             cld_0_max_light_steps = render_prop.cld_0_max_light_steps_viewport
             cld_1_max_light_steps = render_prop.cld_1_max_light_steps_viewport
+        else:
+            cld_0_max_light_steps = render_prop.max_light_steps_viewport
+            cld_1_max_light_steps = render_prop.max_light_steps_viewport
 
         enable_atm = atmo_prop.atm_show_viewport
         enable_cld = cloud_prop.cld_show_viewport
@@ -343,17 +347,21 @@ def draw_env_img(env_img, irra_tex, render_context):
         enable_sun = sun_prop.sun_show_viewport
         enable_stars = stars_prop.stars_show_viewport
         enable_bicubic = False
+        
     elif render_context == 'RENDER':
-        cld_0_max_steps = render_prop.max_steps_render
-        cld_1_max_steps = render_prop.max_steps_render
-        cld_0_max_light_steps = render_prop.max_light_steps_render
-        cld_1_max_light_steps = render_prop.max_light_steps_render
-
         if (render_prop.enable_separate_steps_render):
             cld_0_max_steps = render_prop.cld_0_max_steps_render
             cld_1_max_steps = render_prop.cld_1_max_steps_render
+        else:
+            cld_0_max_steps = render_prop.max_steps_render
+            cld_1_max_steps = render_prop.max_steps_render
+
+        if (render_prop.enable_separate_light_steps_render):
             cld_0_max_light_steps = render_prop.cld_0_max_light_steps_render
-            cld_1_max_light_steps = render_prop.cld_1_max_light_steps_render 
+            cld_1_max_light_steps = render_prop.cld_1_max_light_steps_render
+        else:
+            cld_0_max_light_steps = render_prop.max_light_steps_render
+            cld_1_max_light_steps = render_prop.max_light_steps_render
 
         enable_atm = atmo_prop.atm_show_render
         enable_cld = cloud_prop.cld_show_render
@@ -432,18 +440,19 @@ def pre_draw_viewport(self, context, irra_tex):
     tex_width = int(float(self._scr_width)/float(render_prop.viewport_pixel_size))       
     tex_height = int(float(self._scr_height)/float(render_prop.viewport_pixel_size))
 
-    cld_0_max_steps = render_prop.max_steps_viewport
-    cld_1_max_steps = render_prop.max_steps_viewport
-
-    cld_0_max_light_steps = render_prop.max_light_steps_viewport
-    cld_1_max_light_steps = render_prop.max_light_steps_viewport
-
     if (render_prop.enable_separate_steps_viewport):
         cld_0_max_steps = render_prop.cld_0_max_steps_viewport
         cld_1_max_steps = render_prop.cld_1_max_steps_viewport
+    else:
+        cld_0_max_steps = render_prop.max_steps_viewport
+        cld_1_max_steps = render_prop.max_steps_viewport
 
+    if (render_prop.enable_separate_light_steps_viewport):
         cld_0_max_light_steps = render_prop.cld_0_max_light_steps_viewport
         cld_1_max_light_steps = render_prop.cld_1_max_light_steps_viewport
+    else:
+        cld_0_max_light_steps = render_prop.max_light_steps_viewport
+        cld_1_max_light_steps = render_prop.max_light_steps_viewport
     
     with self._offscreen_viewport.bind():
         gpu.state.depth_test_set('NONE')
@@ -477,14 +486,7 @@ def pre_draw_viewport(self, context, irra_tex):
         _shader.uniform_bool("enable_stars", stars_prop.stars_show_viewport)
         _shader.uniform_bool("enable_pole_visualizer", stars_prop.stars_show_pole)
         
-        #rot_theta = Matrix.Rotation(stars_prop.stars_pole_elevation, 4, Vector((1.0, 0.0, 0.0)))
-        #rot_phi = Matrix.Rotation(stars_prop.stars_pole_rotation, 4, Vector((0.0, 0.0, 1.0)))
-        #rot_mat = rot_theta @ rot_phi
-
-        #pole_dir = Vector.normalized(rot_phi @ rot_theta @ Vector((0.0, 0.0, 1.0)))
-        #_shader.uniform_float("pole_dir",pole_dir)
         _shader.uniform_float("pole_dir", compute_dir(stars_prop.stars_pole_elevation, stars_prop.stars_pole_rotation))
-
 
         atmo_uniforms(_shader)
         cloud_uniforms(_shader)

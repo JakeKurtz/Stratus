@@ -1034,7 +1034,7 @@ vec2 sample_spherical_map2(const vec3 d)
 float sample_blue_noise()
 {
     vec2 uv = gl_FragCoord.xy / img_size.xy;
-    return 2.0 * texture(blue_noise, uv*32.0).r - 1.0;
+    return 2.0 * texture(blue_noise, uv*128.0).r - 1.0;
 }
 
 void shell_intersection(Ray ray, vec3 center, float radius_inner, float radius_outer, out float t_start, out float t_end) 
