@@ -185,6 +185,12 @@ vec2 sample_spherical_map(vec3 d)
     return uv;
 }
 
+vec2 sample_spherical_map2(const vec3 d)
+{
+    vec2 uv = vec2(0.5 - atan(d.y, d.x) * M_1_2PI, 0.5 + asin(d.z) * M_1_PI);
+    return uv;
+}
+
 vec3 orthogonal(vec3 v)
 {
     return abs(v.x) > abs(v.z) ? vec3(-v.y, v.x, 0.0) : vec3(0.0, -v.z, v.y);
@@ -261,10 +267,17 @@ float hash11(float n)
     return fract(sin(n)*43758.5453); 
 }
 
-vec2  hash22(vec2 p) 
+vec2 hash22(vec2 p) 
 { 
     p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); 
-    return fract(sin(p)*43758.5453); 
+    return -1. + 2. * fract(sin(p)*43758.5453); 
+}
+
+float hash12(vec2 p)
+{
+	vec3 p3  = fract(vec3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
 }
 
 vec3 hash33(vec3 p)
@@ -301,6 +314,92 @@ vec4 worley(vec3 uv)
     return v;
 }
 
+float gradientNoise(vec3 x, float freq)
+{
+    // grid
+    vec3 p = floor(x);
+    vec3 w = fract(x);
+    
+    // quintic interpolant
+    vec3 u = w * w * w * (w * (w * 6. - 15.) + 10.);
+    
+    // gradients
+    vec3 ga = hash33(mod(p + vec3(0., 0., 0.), freq));
+    vec3 gb = hash33(mod(p + vec3(1., 0., 0.), freq));
+    vec3 gc = hash33(mod(p + vec3(0., 1., 0.), freq));
+    vec3 gd = hash33(mod(p + vec3(1., 1., 0.), freq));
+    vec3 ge = hash33(mod(p + vec3(0., 0., 1.), freq));
+    vec3 gf = hash33(mod(p + vec3(1., 0., 1.), freq));
+    vec3 gg = hash33(mod(p + vec3(0., 1., 1.), freq));
+    vec3 gh = hash33(mod(p + vec3(1., 1., 1.), freq));
+    
+    // projections
+    float va = dot(ga, w - vec3(0., 0., 0.));
+    float vb = dot(gb, w - vec3(1., 0., 0.));
+    float vc = dot(gc, w - vec3(0., 1., 0.));
+    float vd = dot(gd, w - vec3(1., 1., 0.));
+    float ve = dot(ge, w - vec3(0., 0., 1.));
+    float vf = dot(gf, w - vec3(1., 0., 1.));
+    float vg = dot(gg, w - vec3(0., 1., 1.));
+    float vh = dot(gh, w - vec3(1., 1., 1.));
+	
+    // interpolation
+    return va + 
+           u.x * (vb - va) + 
+           u.y * (vc - va) + 
+           u.z * (ve - va) + 
+           u.x * u.y * (va - vb - vc + vd) + 
+           u.y * u.z * (va - vc - ve + vg) + 
+           u.z * u.x * (va - vb - ve + vf) + 
+           u.x * u.y * u.z * (-va + vb + vc - vd + ve - vf - vg + vh);
+}
+
+float gradientNoise(vec2 x, float freq)
+{
+    // grid
+    vec2 p = floor(x);
+    vec2 w = fract(x);
+    
+    vec2 u = w*w*(3.0-2.0*w);
+
+    // gradients
+    vec2 ga = hash22(mod(p + vec2(0., 0.), freq));
+    vec2 gb = hash22(mod(p + vec2(1., 0.), freq));
+    vec2 gc = hash22(mod(p + vec2(0., 1.), freq));
+    vec2 gd = hash22(mod(p + vec2(1., 1.), freq));
+
+    // projections
+    float va = dot(ga, w - vec2(0., 0.));
+    float vb = dot(gb, w - vec2(1., 0.));
+    float vc = dot(gc, w - vec2(0., 1.));
+    float vd = dot(gd, w - vec2(1., 1.));
+	
+    // interpolation
+    
+    float a = mix( va, vb, u.x);
+    float b = mix( vc, vd, u.x);
+    return mix( a, b, u.y);
+    
+    return va + 
+           u.x * (vb - va) + 
+           u.y * (vc - va) + 
+           u.x * u.y * (va - vb - vc + vd);
+}
+
+float perlinfbm(vec3 p, float freq, int octaves)
+{
+    float G = exp2(-.85);
+    float amp = 1.;
+    float noise = 0.;
+    for (int i = 0; i < octaves; ++i)
+    {
+        noise += amp * gradientNoise(p.xy * freq, freq);
+        freq *= 2.;
+        amp *= G;
+    }
+    
+    return noise;
+}
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;
@@ -478,8 +577,8 @@ struct Cloud {
     float   radius;
     float   density;
     float   density_height;
-    float   height;
     float   thickness;
+    float   shell_thickness;
 
     vec3    sigma_s;
     vec3    sigma_t;
@@ -503,9 +602,12 @@ struct Cloud {
     float   detail_scale;
 
     int     curl_octaves;
+
     float   coverage_intsty;
     float   shape_intsty;
     float   detail_intsty;
+
+    vec2    pos_offset;
 
     vec2    coverage_offset;
     vec2    shape_offset;
@@ -523,7 +625,7 @@ uniform Cloud cloud_0;
 uniform Cloud cloud_1;
 
 uniform float scale_0;
-uniform int scale_1;
+uniform float scale_1;
 uniform float scale_2;
 uniform float scale_3;
 
@@ -851,6 +953,8 @@ vec4 draw_moon(Ray ray)
     vec3 color = vec3(0.0);
     float opacity = 0.0;
 
+    if (surface_intersection(ray)) return vec4(color, opacity);
+
     Ray moon_ray = Ray(vec3(0.0), ray.dir);
 
     vec3 moon_pos = moon.dir * moon_dist;
@@ -876,17 +980,13 @@ vec4 draw_moon(Ray ray)
         mat3 TBN = mat3(T,B,sp);
         norm = TBN*norm;
 
-        vec3 L = min(sun_radiation(ray, moon_solid_angle) * 0.00025 * moon.intsty, MAX_RADIATION);
+        vec3 L = min(sun_radiation(ray, moon_solid_angle) * 0.000025 * moon.intsty, MAX_RADIATION);
 
         vec3 trans_moon_phase_dir = normalize(vec3(moon_rot_mat * vec4(moon_phase_dir, 0.0)));
 
         float diff = max(dot(trans_moon_phase_dir, norm), 0.0);
         color = (L * (diff + moon_ambient_intsty) * texture(moon_albedo_tex, uv).rgb);
         opacity = 1.0;
-    }
-
-    if (ray.dir.z < 0.0) {
-      opacity = 0.0;
     }
 
     return vec4(color, opacity);
@@ -896,6 +996,8 @@ vec4 draw_sun(Ray ray)
 {
   vec3 color = vec3(0.0);
   float opacity = 0.0;
+
+  if (surface_intersection(ray)) return vec4(color, opacity);
 
   float min_cos_theta = cos(sun_half_angular);
 
@@ -917,10 +1019,6 @@ vec4 draw_sun(Ray ray)
     color.rgb *= L;
   }
 
-  if (ray.dir.z < 0.0) {
-      opacity = 0.0;
-  }
-
   return vec4(color, opacity);
 }
 
@@ -938,7 +1036,7 @@ vec4 draw_stars(Ray ray)
   vec3 L = vec3(0.0);
   float opacity = 0.0;
 
-  if (ray.dir.z < 0.0) return vec4(L, 0.0);
+  if (surface_intersection(ray)) return vec4(L, opacity);
 
   vec3 rd = normalize(vec3(stars_rot_mat * vec4(ray.dir, 0.0)));
 
@@ -998,12 +1096,13 @@ vec4 draw_pole_visualizer(Ray ray)
 float sample_curl_tex(vec2 p)
 {
    return texture(noise_tex_2D_2048, p).b;
+   //return perlinfbm(vec3(p,0.), 2.0, 3);
 }
 
 vec2 curl(vec2 pos)
 { 
     pos *= 1.0;
-    vec2 e = vec2(0.1, 0);
+    vec2 e = vec2(0.15, 0);
     
     float p = sample_curl_tex(pos);
     
@@ -1023,12 +1122,6 @@ vec2 curl_noise(vec2 pos, int octaves)
         dir += new_pos;
 	}
     return dir;
-}
-
-vec2 sample_spherical_map2(const vec3 d)
-{
-    vec2 uv = vec2(0.5 - atan(d.y, d.x) * M_1_2PI, 0.5 + asin(d.z) * M_1_PI);
-    return uv;
 }
 
 float sample_blue_noise()
@@ -1060,7 +1153,7 @@ bool cld_sample(
     out float h_p) 
 {
     float inner_shell = sdf_sphere(pos, cloud.radius);
-    float outer_shell = sdf_sphere(pos, cloud.radius + cloud.thickness);
+    float outer_shell = sdf_sphere(pos, cloud.radius + cloud.shell_thickness);
     float cld_shell = sdf_op_sub(inner_shell, outer_shell);
 
     ds = 0.0;
@@ -1071,28 +1164,27 @@ bool cld_sample(
 
     if (cld_shell < 0.0) 
     {
-        h_p = saturate(clamp(length(pos) - cloud.radius, 0.0, cloud.thickness) / (cloud.thickness));
+        h_p = saturate(clamp(length(pos) - cloud.radius, 0.0, cloud.shell_thickness) / (cloud.shell_thickness));
 
         /* -------------------------- Sample Noise Textures ------------------------- */
-        vec3 _pos = pos;
-        if (cloud.layer == 0) {
-            pos = pos + vec3(curl_noise((pos.xy + cloud.coverage_offset) * 0.00001, cloud.curl_octaves),0.) * 100000.0;
-        }
+        float curl_scale = 0.75; // Just a "magic number" that looks good.
+        vec3 pos_curl = pos + vec3(curl_noise((pos.xy + cloud.pos_offset) * cloud.coverage_scale * curl_scale, cloud.curl_octaves),0.) * 100000.0;
 
-        vec2 c_sp = (pos.xy + cloud.coverage_offset) * cloud.coverage_scale;
+        vec2 c_sp = (pos_curl.xy + cloud.pos_offset + cloud.coverage_offset) * cloud.coverage_scale;
         vec4 cns = texture(noise_tex_2D_2048, c_sp);
 
-        vec3 s_sp = (pos + vec3(cloud.coverage_offset + cloud.shape_offset, 0.0)) * cloud.shape_scale;
+        vec3 s_sp = (pos_curl + vec3(cloud.pos_offset + cloud.coverage_offset + cloud.shape_offset, 0.0)) * cloud.shape_scale;
         vec4 sns = texture(noise_tex_3D_128, s_sp);
         
-        vec3 d_sp = (_pos + vec3(cloud.coverage_offset + cloud.detail_offset, 0.0)) * cloud.detail_scale;
+        vec3 d_sp = (pos + vec3(cloud.pos_offset + cloud.coverage_offset + cloud.detail_offset, 0.0)) * cloud.detail_scale;
         vec4 dns = texture(noise_tex_3D_64, d_sp);
 
         /* -------------------------------------------------------------------------- */
 
-        float coverage_area = texture(noise_tex_2D_2048, (pos.xy + cloud.coverage_offset) * 0.000001).y * cloud.coverage_intsty;
+        float coverage_area = texture(noise_tex_2D_2048, (pos_curl.xy + cloud.pos_offset) * scale_3).y * cloud.coverage_intsty;
+        //float coverage_area = texture(noise_tex_2D_2048, (pos.xy + cloud.coverage_offset) * 0.000001).y * cloud.coverage_intsty;
         float CN = mix(cns.x, cns.y, cloud.coverage_shape);
-        float wh = CN * cloud.height;
+        float wh = CN * cloud.thickness;
 
         /* ------------------------- Shape-Height Functions ------------------------- */
 
@@ -1103,7 +1195,7 @@ bool cld_sample(
         /* ------------------------ Density-Height Functions ------------------------ */
 
         float DR_t = 1.0;
-        float DR_b = saturate(remap(saturate(h_p+cloud.density_height), cloud.btm_roundness, 1.0, 0.0, 1.0));
+        float DR_b = saturate(pow(h_p, 1.0 / (1.0 - cloud.density_height)));
         float DA = DR_t * DR_b;
 
         /* -------------------------------------------------------------------------- */
@@ -1202,7 +1294,7 @@ float ray_optical_depth(Cloud cloud, Ray ray)
         ray, 
         cld_domain_center + vec3(0, 0, earth_radius), 
         cloud.radius, 
-        cloud.radius + cloud.thickness, 
+        cloud.radius + cloud.shell_thickness, 
         t_start, 
         t_end);
 
@@ -1237,12 +1329,15 @@ float ray_optical_depth(Cloud cloud, Ray ray)
     return optical_depth;
 }
 
-vec3 ambient_light_sample(Cloud cloud, float h_p, vec3 dir) 
+vec3 ambient_light_sample(Cloud cloud, float h_p, Ray ray) 
 {
-    vec3 top_color = texture(irra_tex, clamp(sample_spherical_map2(dir), vec2(0.01), vec2(1.0))).rgb;
-    vec3 bottom_color = texture(irra_tex, clamp(vec2(0.5, h_p), vec2(0.01), vec2(0.1))).rgb;
 
-    float t = 1.0 - (pow(1.0 - h_p, 5.0));
+    float remap_hp = saturate(remap(h_p, cloud.btm_roundness, 1.0, 0.0, 1.0));
+
+    vec3 top_color = texture(irra_tex, sample_spherical_map2(ray.dir)).rgb;
+    vec3 bottom_color = texture(irra_tex, clamp(vec2(0.5, remap_hp), vec2(0.01), vec2(0.1))).rgb;
+
+    float t = 1.0 - (pow(1.0 - remap_hp, 5.0));
     vec3 ambient_color = mix(bottom_color, top_color, t) * cloud.ambient_intsty;
 
     return ambient_color;
@@ -1276,7 +1371,7 @@ vec3 direct_light_sample(Cloud cloud, Ray ray, Light light)
     light_ray.pos = ray.pos;
     light_ray.dir = light.dir;
 
-    vec3 L_light = sun_radiation(light_ray, 1.0, true);
+    vec3 L_light = sun_radiation(light_ray, 0.1, true);
 
     if (length(L_light) > 1e-3) {
         float mu = dot(light.dir, ray.dir);
@@ -1298,15 +1393,18 @@ vec4 cloud_raymarch(Cloud cloud, Ray ray, out float depth)
     depth = 0.0;
     
     float opacity = 0.0;
+    float tt = 1.0;
     vec3 transmittance = vec3(1.0);
     vec3 scattered_light = vec3(0.0, 0.0, 0.0);
+
+    if (surface_intersection(ray)) return vec4(scattered_light, opacity);
 
     float t_start, t_end;
     shell_intersection(
         ray, 
         cld_domain_center + vec3(0, 0, earth_radius), 
-        cloud.radius - 500.0, 
-        cloud.radius + cloud.thickness + 500.0, 
+        cloud.radius, 
+        cloud.radius + cloud.shell_thickness, 
         t_start, 
         t_end);
 
@@ -1314,9 +1412,7 @@ vec4 cloud_raymarch(Cloud cloud, Ray ray, out float depth)
     vec3 end_pos = (ray.pos + ray.dir * t_end);
     float ray_length = distance(start_pos, end_pos);
 
-    depth = ray_length;
-
-    if (surface_intersection(ray)) return vec4(scattered_light, opacity);
+    depth = distance(ray.pos, start_pos);
 
     float segment_length = ray_length / float(cloud.max_steps);
     float segment = segment_length;
@@ -1338,16 +1434,17 @@ vec4 cloud_raymarch(Cloud cloud, Ray ray, out float depth)
         {
             vec3 direct_light = vec3(0.0);
             direct_light += (enable_sun && enable_sun_as_light) ? direct_light_sample(cloud, ray, sun) : vec3(0.0);
-            direct_light += (enable_moon && enable_moon_as_light) ? direct_light_sample(cloud, ray, moon) : vec3(0.0);
-            vec3 ambient_light = ambient_light_sample(cloud, h_p, ray.dir);
+            direct_light += (enable_moon && enable_moon_as_light) ? direct_light_sample(cloud, ray, moon) * 0.000025 : vec3(0.0);
+            vec3 ambient_light = ambient_light_sample(cloud, h_p, ray);
 
             vec3 Li = (direct_light + ambient_light) * s_sigma_s;
             scattered_light += transmittance * (Li - Li * exp(-s_sigma_t * segment)) / s_sigma_t;
             transmittance *= exp(-s_sigma_t * segment);
+            tt *= exp(-segment * ds);
         }
 
-        if (length(transmittance) < 0.000000001) {
-            transmittance = vec3(0.0);
+        if (tt < 0.0001) {
+            tt = 0.0;
             break;
         }
 
@@ -1355,7 +1452,7 @@ vec4 cloud_raymarch(Cloud cloud, Ray ray, out float depth)
         march_dst += segment;
     }
 
-    opacity = 1.0 - length(transmittance);
+    opacity = 1.0 - tt;
 
     return vec4(scattered_light, opacity);
 }
@@ -1375,7 +1472,7 @@ vec4 compute_cld(Cloud cloud, Ray ray)
     cld_ap += (enable_atm && enable_moon && enable_moon_as_light) ? atmo_raymarch(ray, moon, cld_point) * 0.000025 : vec4(0.0); 
 
     float ap_clouds = exp(-cld_depth / cloud.ap_intsty);
-    cld_color.rgb = _mix(cld_ap.rgb, cld_color.rgb, ap_clouds);
+    cld_color.rgb = _mix(cld_ap.rgb * cld_color.a, cld_color.rgb, ap_clouds);
 
     return cld_color;
 }
@@ -1398,7 +1495,6 @@ void main()
       
     vec4 stars_color = (enable_stars) ? draw_stars(ray) : vec4(0.0);
 
-    //float sun_opacity = 0.0;
     precise vec4 sun_color = (enable_sun) ? draw_sun(ray) : vec4(0.0);
 
     sun_color = _mix(stars_color, sun_color, sun_color.a);
@@ -1419,14 +1515,10 @@ void main()
             {
                 vec2 _uv = uv - pixel_size * vec2(0.5) + filter_step * vec2(i,j);
                 ray.dir = sample_spherical_direction(_uv);
-                
-                //float _opacity = 0.0;
                 moon_color += draw_moon(ray);
-                //moon_opacity += _opacity;
             }
         }
         moon_color /= float((aa_level+1)*(aa_level+1)); 
-        //moon_opacity /= float((aa_level+1)*(aa_level+1)); 
     }
     
     precise vec4 moon_sun_color = _mix(sun_color, moon_color, moon_color.a);
@@ -1445,8 +1537,8 @@ void main()
 
         atmo_color += moon_sun_color;
 
-        sky_color = _mix(atmo_color, cld_0_color, cld_0_color.a);
-        sky_color = _mix(sky_color, cld_1_color, cld_1_color.a);
+        sky_color = atmo_color*(1.0 - cld_0_color.a) + cld_0_color;
+        sky_color = sky_color*(1.0 - cld_1_color.a) + cld_1_color;
 
     } else {
         sky_color = atmo_color + moon_sun_color;

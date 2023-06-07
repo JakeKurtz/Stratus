@@ -309,6 +309,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    cld_0_pos_offset: FloatVectorProperty(
+        name = "Position Offset",
+        description="Position offset.",
+        subtype='TRANSLATION',
+        size = 2,
+        step = 1,
+        default=(0,0),
+        update=update_prop
+        )
+
     cld_0_coverage_offset: FloatVectorProperty(
         name = "Coverage Noise Offset",
         description="Coverage noise texture offset.",
@@ -512,12 +522,12 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
-    cld_1_curl_intsty: FloatProperty(
-        name = "Curl Intensity",
+    cld_1_curl_octaves: IntProperty(
+        name = "Curl Octaves",
         description="Intensity of Curl noise applied to cloud layer.",
-        default=0.0,
-        min= 0.0,
-        max = 1.0,
+        default=0,
+        min= 0,
+        max = 16,
         update=update_prop
         )
 
@@ -535,6 +545,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         description = "Cloud layer rotation.",
         default = 0.0,
         subtype="ANGLE",
+        update=update_prop
+        )
+
+    cld_1_pos_offset: FloatVectorProperty(
+        name = "Position Offset",
+        description="Position offset.",
+        subtype='TRANSLATION',
+        size = 2,
+        step = 1,
+        default=(0,0),
         update=update_prop
         )
 
@@ -575,6 +595,13 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )
 
+    scale_1: FloatProperty(
+        name = "scale_1",
+        description = "",
+        default = 0.35,
+        update=update_prop
+        )
+    '''
     scale_1: IntProperty(
         name = "scale_1",
         description = "",
@@ -583,7 +610,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         max = 16,
         update=update_prop
         )
-
+    '''
     scale_2: FloatProperty(
         name = "scale_2",
         description = "",
@@ -651,6 +678,7 @@ class STRATUS_PT_cloud_layer_0(Panel):
 
         layout.prop(prop, "scale_0")
         layout.prop(prop, "scale_1")
+        layout.prop(prop, "scale_2")
         layout.prop(prop, "scale_3")       
 class STRATUS_PT_cloud_layer_0_transform(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_0"
@@ -668,7 +696,7 @@ class STRATUS_PT_cloud_layer_0_transform(Panel):
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
-        grid_0.prop(prop, "cld_0_coverage_offset", text="")
+        grid_0.prop(prop, "cld_0_pos_offset", text="")
         grid_0.prop(prop, "cld_0_height", slider=True, text="Z")
 
         grid_1 = layout.grid_flow(columns=1, align=True)
@@ -833,7 +861,7 @@ class STRATUS_PT_cloud_layer_1_transform(Panel):
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
-        grid_0.prop(prop, "cld_1_coverage_offset", text="")
+        grid_0.prop(prop, "cld_1_pos_offset", text="")
         grid_0.prop(prop, "cld_1_height", slider=True, text="Z")
 
         grid_1 = layout.grid_flow(columns=1, align=True)
@@ -899,6 +927,8 @@ class STRATUS_PT_cloud_layer_1_shape(Panel):
         layout.prop(prop, "cld_1_bottom_roundness", slider=True)
         layout.prop(prop, "cld_1_top_roundness", slider=True)
         layout.prop(prop, "cld_1_thickness", slider=True)
+        layout.prop(prop, "cld_1_curl_octaves", slider=True)
+        
 class STRATUS_PT_cloud_layer_1_shape_coverage_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
     bl_label = "Coverage"

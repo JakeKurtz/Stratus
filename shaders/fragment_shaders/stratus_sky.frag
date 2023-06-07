@@ -185,6 +185,12 @@ vec2 sample_spherical_map(vec3 d)
     return uv;
 }
 
+vec2 sample_spherical_map2(const vec3 d)
+{
+    vec2 uv = vec2(0.5 - atan(d.y, d.x) * M_1_2PI, 0.5 + asin(d.z) * M_1_PI);
+    return uv;
+}
+
 vec3 orthogonal(vec3 v)
 {
     return abs(v.x) > abs(v.z) ? vec3(-v.y, v.x, 0.0) : vec3(0.0, -v.z, v.y);
@@ -261,10 +267,17 @@ float hash11(float n)
     return fract(sin(n)*43758.5453); 
 }
 
-vec2  hash22(vec2 p) 
+vec2 hash22(vec2 p) 
 { 
     p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) ); 
-    return fract(sin(p)*43758.5453); 
+    return -1. + 2. * fract(sin(p)*43758.5453); 
+}
+
+float hash12(vec2 p)
+{
+	vec3 p3  = fract(vec3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
 }
 
 vec3 hash33(vec3 p)
@@ -301,6 +314,92 @@ vec4 worley(vec3 uv)
     return v;
 }
 
+float gradientNoise(vec3 x, float freq)
+{
+    // grid
+    vec3 p = floor(x);
+    vec3 w = fract(x);
+    
+    // quintic interpolant
+    vec3 u = w * w * w * (w * (w * 6. - 15.) + 10.);
+    
+    // gradients
+    vec3 ga = hash33(mod(p + vec3(0., 0., 0.), freq));
+    vec3 gb = hash33(mod(p + vec3(1., 0., 0.), freq));
+    vec3 gc = hash33(mod(p + vec3(0., 1., 0.), freq));
+    vec3 gd = hash33(mod(p + vec3(1., 1., 0.), freq));
+    vec3 ge = hash33(mod(p + vec3(0., 0., 1.), freq));
+    vec3 gf = hash33(mod(p + vec3(1., 0., 1.), freq));
+    vec3 gg = hash33(mod(p + vec3(0., 1., 1.), freq));
+    vec3 gh = hash33(mod(p + vec3(1., 1., 1.), freq));
+    
+    // projections
+    float va = dot(ga, w - vec3(0., 0., 0.));
+    float vb = dot(gb, w - vec3(1., 0., 0.));
+    float vc = dot(gc, w - vec3(0., 1., 0.));
+    float vd = dot(gd, w - vec3(1., 1., 0.));
+    float ve = dot(ge, w - vec3(0., 0., 1.));
+    float vf = dot(gf, w - vec3(1., 0., 1.));
+    float vg = dot(gg, w - vec3(0., 1., 1.));
+    float vh = dot(gh, w - vec3(1., 1., 1.));
+	
+    // interpolation
+    return va + 
+           u.x * (vb - va) + 
+           u.y * (vc - va) + 
+           u.z * (ve - va) + 
+           u.x * u.y * (va - vb - vc + vd) + 
+           u.y * u.z * (va - vc - ve + vg) + 
+           u.z * u.x * (va - vb - ve + vf) + 
+           u.x * u.y * u.z * (-va + vb + vc - vd + ve - vf - vg + vh);
+}
+
+float gradientNoise(vec2 x, float freq)
+{
+    // grid
+    vec2 p = floor(x);
+    vec2 w = fract(x);
+    
+    vec2 u = w*w*(3.0-2.0*w);
+
+    // gradients
+    vec2 ga = hash22(mod(p + vec2(0., 0.), freq));
+    vec2 gb = hash22(mod(p + vec2(1., 0.), freq));
+    vec2 gc = hash22(mod(p + vec2(0., 1.), freq));
+    vec2 gd = hash22(mod(p + vec2(1., 1.), freq));
+
+    // projections
+    float va = dot(ga, w - vec2(0., 0.));
+    float vb = dot(gb, w - vec2(1., 0.));
+    float vc = dot(gc, w - vec2(0., 1.));
+    float vd = dot(gd, w - vec2(1., 1.));
+	
+    // interpolation
+    
+    float a = mix( va, vb, u.x);
+    float b = mix( vc, vd, u.x);
+    return mix( a, b, u.y);
+    
+    return va + 
+           u.x * (vb - va) + 
+           u.y * (vc - va) + 
+           u.x * u.y * (va - vb - vc + vd);
+}
+
+float perlinfbm(vec3 p, float freq, int octaves)
+{
+    float G = exp2(-.85);
+    float amp = 1.;
+    float noise = 0.;
+    for (int i = 0; i < octaves; ++i)
+    {
+        noise += amp * gradientNoise(p.xy * freq, freq);
+        freq *= 2.;
+        amp *= G;
+    }
+    
+    return noise;
+}
 /* ------------------------------- Atmosphere ------------------------------- */
 
 uniform bool enable_atm;

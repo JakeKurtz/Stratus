@@ -146,7 +146,8 @@ def cloud_uniforms(shader):
     #detail_scale = 0.002 / scale;
     #shape_scale = (0.0015 / scale) * 0.3;
     #coverage_scale = 0.00003 / scale;
-    thickness = 500.0 * scale;
+
+    shell_thickness = 500.0 * scale;
 
     sigma_a = Vector((0.0, 0.0, 0.0))
     cld_0_sigma_t = max(Vector(prop.cld_0_sigma_s) + sigma_a, Vector((0.000000001,0.000000001,0.000000001)))
@@ -161,8 +162,8 @@ def cloud_uniforms(shader):
     shader.uniform_float("cloud_0.radius",              prop.cld_0_height + cld_domain_radius)
     shader.uniform_float("cloud_0.density",             prop.cld_0_density)
     shader.uniform_float("cloud_0.density_height",      prop.cld_0_density_height)
-    shader.uniform_float("cloud_0.height",              prop.cld_0_thickness)
-    shader.uniform_float("cloud_0.thickness",           thickness)
+    shader.uniform_float("cloud_0.thickness",           prop.cld_0_thickness)
+    shader.uniform_float("cloud_0.shell_thickness",     shell_thickness)
 
     shader.uniform_float("cloud_0.sigma_s",             prop.cld_0_sigma_s)
     shader.uniform_float("cloud_0.sigma_t",             cld_0_sigma_t)
@@ -191,6 +192,7 @@ def cloud_uniforms(shader):
     shader.uniform_float("cloud_0.shape_intsty",        0.6 * prop.cld_0_shape_intsty)
     shader.uniform_float("cloud_0.detail_intsty",       0.6 * prop.cld_0_detail_intsty)
 
+    shader.uniform_float("cloud_0.pos_offset",          prop.cld_0_pos_offset * 100.0)
     shader.uniform_float("cloud_0.coverage_offset",     prop.cld_0_coverage_offset * 100.0)
     shader.uniform_float("cloud_0.shape_offset",        prop.cld_0_shape_offset * 100.0)
     shader.uniform_float("cloud_0.detail_offset",       prop.cld_0_detail_offset * 100.0)
@@ -211,7 +213,7 @@ def cloud_uniforms(shader):
     coverage_scale = 0.000035 / scale #prop.cld_1_noise_sizes[2] / scale;     # 0.000035
     #coverage_scale = 0.000003 / scale;
 
-    thickness = 1000 * scale;
+    shell_thickness = 1000 * scale;
 
     sigma_a = Vector((0.0, 0.0, 0.0))
     cld_1_sigma_t = max(Vector(prop.cld_1_sigma_s) + sigma_a, Vector((0.000000001,0.000000001,0.000000001)))
@@ -226,8 +228,8 @@ def cloud_uniforms(shader):
     shader.uniform_float("cloud_1.radius",              prop.cld_1_height + cld_domain_radius)
     shader.uniform_float("cloud_1.density",             prop.cld_1_density)
     shader.uniform_float("cloud_1.density_height",      prop.cld_1_density_height)
-    shader.uniform_float("cloud_1.height",              prop.cld_1_thickness)
-    shader.uniform_float("cloud_1.thickness",           thickness)
+    shader.uniform_float("cloud_1.thickness",           prop.cld_1_thickness)
+    shader.uniform_float("cloud_1.shell_thickness",     shell_thickness)
 
     shader.uniform_float("cloud_1.sigma_s",             prop.cld_1_sigma_s)
     shader.uniform_float("cloud_1.sigma_t",             cld_1_sigma_t)
@@ -245,18 +247,22 @@ def cloud_uniforms(shader):
     shader.uniform_float("cloud_1.shape_scale",         shape_scale)
     shader.uniform_float("cloud_1.detail_scale",        detail_scale)
 
+    shader.uniform_int("cloud_1.curl_octaves",          prop.cld_1_curl_octaves)
+
     shader.uniform_float("cloud_1.coverage_intsty",     prop.cld_1_coverage_intsty)
     shader.uniform_float("cloud_1.shape_intsty",        0.6 * prop.cld_1_shape_intsty)
     shader.uniform_float("cloud_1.detail_intsty",       prop.cld_1_detail_intsty)
 
+    shader.uniform_float("cloud_1.pos_offset",          prop.cld_1_pos_offset * 100.0)
     shader.uniform_float("cloud_1.coverage_offset",     prop.cld_1_coverage_offset * 100.0)
     shader.uniform_float("cloud_1.shape_offset",        prop.cld_1_shape_offset * 100.0)
     shader.uniform_float("cloud_1.detail_offset",       prop.cld_1_detail_offset * 100.0)
 
     #shader.uniform_float("scale_0",                     prop.scale_0)
+    #shader.uniform_float("scale_1",                     prop.scale_1)
     #shader.uniform_int("scale_1",                       prop.scale_1)
     #shader.uniform_float("scale_2",                     prop.scale_2)
-    #shader.uniform_float("scale_3",                     prop.scale_3)
+    shader.uniform_float("scale_3",                     prop.scale_3)
 
     cld_1_trans = Matrix.Translation(cld_domain_center + Vector((0,0,6360e3)))
     cld_1_rot = Matrix.Rotation(prop.cld_1_rotation, 4, 'Z')
