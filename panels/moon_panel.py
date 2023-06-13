@@ -32,6 +32,7 @@ from bpy.types import (Panel,
                        )
 
 from .panel_utils import update_prop
+from .main_panel import (STRATUS_PT_main, STRATUS_main_Properties)
 
 class STRATUS_MoonProperties(PropertyGroup):
     moon_show_viewport: BoolProperty(
@@ -124,7 +125,7 @@ class STRATUS_MoonProperties(PropertyGroup):
         )
 
     moon_phase_rotation: FloatProperty(
-        name = "Phase Rotation",
+        name = "Rotation",
         description = "A float property",
         default = radians(130.0),
         subtype="ANGLE",
@@ -147,12 +148,30 @@ class STRATUS_MoonProperties(PropertyGroup):
         update=update_prop
         )
 
-class STRATUS_PT_moon_panel(Panel):
+    moon_pinned: BoolProperty(
+        default=False
+    )
+
+class STRATUS_PT_moon(Panel):
     bl_label = "Moon"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        prop = scene.moon_props
+        return (main_prop.panels == "CELE" or prop.moon_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.moon_props
+        
+        the_icon = 'PINNED' if prop.moon_pinned else 'UNPINNED'
+        self.layout.prop(prop, "moon_pinned", text="", icon=the_icon)
 
     def draw(self, context):
         layout = self.layout
@@ -167,7 +186,6 @@ class STRATUS_PT_moon_panel(Panel):
         render_options.prop(prop, 'moon_show_viewport', icon=icon_vp)
         render_options.prop(prop, 'moon_show_render', icon=icon_r)
         
-        layout.separator()
         layout.prop(prop, "moon_size")
 
         layout.separator()
@@ -175,21 +193,30 @@ class STRATUS_PT_moon_panel(Panel):
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.prop(prop, "moon_intsty")
         grid_0.prop(prop, "moon_ambient_intsty", slider=True)
-        grid_0.prop(prop, "moon_silver_intsty")
-        grid_0.prop(prop, "moon_silver_spread")
 
         layout.separator()
         grid_1 = layout.grid_flow(columns=1, align=True)
         grid_1.prop(prop, "moon_elevation")
         grid_1.prop(prop, "moon_rotation")
-        
-        layout.separator()
+        grid_1.prop(prop, "moon_face_rotation")
+
+class STRATUS_PT_moon_phase(Panel):
+    bl_parent_id = "STRATUS_PT_moon"
+    bl_label = "Phase"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.moon_props
+
         layout.prop(prop, "moon_use_sun_dir")
 
         grid_2 = layout.grid_flow(columns=1, align=True)
         grid_2.prop(prop, "moon_phase")
         grid_2.prop(prop, "moon_phase_rotation")
-        grid_2.prop(prop, "moon_face_rotation")
 
-        #grid_0.enabled = prop.moon_enable_light
-        #grid_2.enabled = not prop.moon_use_sun_dir
+        grid_2.enabled = not prop.moon_use_sun_dir

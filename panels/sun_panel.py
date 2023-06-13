@@ -32,6 +32,7 @@ from bpy.types import (Panel,
                        )
                        
 from .panel_utils import update_prop
+from .main_panel import (STRATUS_PT_main, STRATUS_main_Properties)
 
 class STRATUS_SunProperties(PropertyGroup):
     sun_show_viewport: BoolProperty(
@@ -107,12 +108,31 @@ class STRATUS_SunProperties(PropertyGroup):
         update=update_prop
         )
 
+    sun_pinned: BoolProperty(
+        default=False
+    )
+
 class STRATUS_PT_sun_panel(Panel):
+
     bl_label = "Sun"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        prop = scene.sun_props
+        return (main_prop.panels == "CELE" or prop.sun_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.sun_props
+        
+        the_icon = 'PINNED' if prop.sun_pinned else 'UNPINNED'
+        self.layout.prop(prop, "sun_pinned", text="", icon=the_icon)
 
     def draw(self, context):
         layout = self.layout
@@ -127,7 +147,6 @@ class STRATUS_PT_sun_panel(Panel):
         render_options.prop(prop, 'sun_show_viewport', icon=icon_vp)
         render_options.prop(prop, 'sun_show_render', icon=icon_r)
         
-        layout.separator()
         layout.prop(prop, "sun_size")
 
         layout.separator()
@@ -135,12 +154,8 @@ class STRATUS_PT_sun_panel(Panel):
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.prop(prop, "sun_intsty")
-        grid_0.prop(prop, "sun_silver_intsty")
-        grid_0.prop(prop, "sun_silver_spread")
 
         layout.separator()
         grid_1 = layout.grid_flow(columns=1, align=True)
         grid_1.prop(prop, "sun_elevation")
         grid_1.prop(prop, "sun_rotation")
-
-        grid_0.enabled = prop.sun_enable_light

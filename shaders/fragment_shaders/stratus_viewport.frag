@@ -420,7 +420,7 @@ uniform float ozone_density;
 
 const float earth_radius = 6360e3;
 const float atmosphere_radius = 6420e3;
-const float mie_coeff = 21e-5;
+const float mie_coeff = 21e-6;
 
 const float rayleigh_scale_height = 8.0e3;
 const float mie_scale_height = 1.2e3;

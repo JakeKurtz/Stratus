@@ -31,6 +31,7 @@ from bpy.types import (Panel,
                        )
 
 from .panel_utils import update_prop
+from .main_panel import (STRATUS_PT_main, STRATUS_main_Properties)
 
 class STRATUS_CloudProperties(PropertyGroup):
 
@@ -89,7 +90,7 @@ class STRATUS_CloudProperties(PropertyGroup):
     cld_0_top_roundness: FloatProperty(
         name = "cld_0_top_roundness",
         description = "",
-        default = 0.2,
+        default = 0.5,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -143,7 +144,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         description="Height from sea level.",
         subtype="DISTANCE",
         default=8000,
-        min= 7000,
+        min= 6000,
         max = 10000.0,
         update=update_prop
         )  
@@ -359,12 +360,11 @@ class STRATUS_CloudProperties(PropertyGroup):
         default=(1,1,1),
         update=update_prop
         )
-
-    
+  
     cld_1_top_roundness: FloatProperty(
         name = "cld_1_top_roundness",
         description = "",
-        default = 0.2,
+        default = 0.5,
         max = 1.0,
         min = 0.0,
         update=update_prop
@@ -637,6 +637,33 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         ) 
 
+    cld_0_transform_pinned: BoolProperty(
+        default=False
+    )
+    cld_0_shape_pinned: BoolProperty(
+        default=False
+    )
+    cld_0_density_pinned: BoolProperty(
+        default=False
+    )
+    cld_0_light_pinned: BoolProperty(
+        default=False
+    )
+
+    cld_1_transform_pinned: BoolProperty(
+        default=False
+    )
+    cld_1_shape_pinned: BoolProperty(
+        default=False
+    )
+    cld_1_density_pinned: BoolProperty(
+        default=False
+    )
+    cld_1_light_pinned: BoolProperty(
+        default=False
+    )
+
+'''
 class STRATUS_PT_cloud_panel(Panel):
     bl_label = "Clouds"
     bl_category = "Stratus"
@@ -656,43 +683,71 @@ class STRATUS_PT_cloud_panel(Panel):
         render_options.label(text="Clouds")
         render_options.prop(prop, 'cld_show_viewport', icon=icon_vp)
         render_options.prop(prop, 'cld_show_render', icon=icon_r)
+'''
 
 class STRATUS_PT_cloud_layer_0(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_panel"
+    bl_parent_id = "STRATUS_PT_main"
     bl_label = "Cirro Layer"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_options = {"DEFAULT_CLOSED"}
+    bl_options = {"HIDE_HEADER"}
 
-    def draw_header(self, context):
-        self.layout.prop(context.scene.cloud_props, "cld_0_enable")
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        return main_prop.panels == "CIRR"
 
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+
+        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_0_enable else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_0_enable else "RESTRICT_RENDER_ON"
+
+        render_options = layout.row(align=True)
+        render_options.label(text="Cirro")
+        render_options.prop(prop, 'cld_0_enable', icon=icon_vp)
+        render_options.prop(prop, 'cld_0_enable', icon=icon_r)
+
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_1_noise_sizes")
 
         layout.prop(prop, "scale_0")
         layout.prop(prop, "scale_1")
         layout.prop(prop, "scale_2")
-        layout.prop(prop, "scale_3")       
+        layout.prop(prop, "scale_3")
 class STRATUS_PT_cloud_layer_0_transform(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_0"
     bl_label = "Transform"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CIRR" or cloud_prop.cld_0_transform_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_0_transform_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_0_transform_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        main_prop = scene.main_props
+
+        #layout.enabled = prop.cld_0_enable
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
@@ -707,34 +762,60 @@ class STRATUS_PT_cloud_layer_0_transform(Panel):
         grid_2.label(text="Scale")
         grid_2.prop(prop, "cld_0_size", slider=True, text="")
 class STRATUS_PT_cloud_layer_0_density(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_0"
     bl_label = "Density"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CIRR" or cloud_prop.cld_0_density_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_0_density_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_0_density_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_density", slider=True)
         layout.prop(prop, "cld_0_density_height", slider=True)
 class STRATUS_PT_cloud_layer_0_light(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_0"
     bl_label = "Lighting"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CIRR" or cloud_prop.cld_0_light_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_0_light_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_0_light_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_sigma_s")
         layout.prop(prop, "cld_0_ap_intsty", slider=True)
@@ -742,27 +823,40 @@ class STRATUS_PT_cloud_layer_0_light(Panel):
 
         grid = layout.grid_flow(columns=1, align=True)
         grid.label(text="Scattering")
-        grid.prop(prop, "cld_0_atten")
-        grid.prop(prop, "cld_0_contr")
-        grid.prop(prop, "cld_0_eccen")
+        grid.prop(prop, "cld_0_atten", slider=True)
+        grid.prop(prop, "cld_0_contr", slider=True)
+        grid.prop(prop, "cld_0_eccen", slider=True)
 class STRATUS_PT_cloud_layer_0_shape(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_0"
-    bl_label = "Shaping"
+    bl_label = "Shape"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CIRR" or cloud_prop.cld_0_shape_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_0_shape_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_0_shape_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_bottom_roundness", slider=True)
-        layout.prop(prop, "cld_0_top_roundness", slider=True)
+        #layout.prop(prop, "cld_0_top_roundness", slider=True)
         layout.prop(prop, "cld_0_thickness", slider=True)   
-        layout.prop(prop, "cld_0_curl_octaves", slider=True)  
+        
 class STRATUS_PT_cloud_layer_0_shape_coverage_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
     bl_label = "Coverage"
@@ -775,14 +869,13 @@ class STRATUS_PT_cloud_layer_0_shape_coverage_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
-        layout.prop(prop, "cld_0_coverage_intsty", slider=True, text="Intensity")
-        layout.prop(prop, "cld_0_coverage_shape", slider=True, text="Shape")
+        box = layout.box()
 
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
-        grid.prop(prop, "cld_0_coverage_offset", text="")
+        box.prop(prop, "cld_0_coverage_intsty", slider=True, text="Intensity")
+        box.prop(prop, "cld_0_coverage_shape", slider=True, text="Shape")
+        box.prop(prop, "cld_0_curl_octaves", slider=True, text="Curl")
 class STRATUS_PT_cloud_layer_0_shape_shape_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
     bl_label = "Shape"
@@ -795,15 +888,11 @@ class STRATUS_PT_cloud_layer_0_shape_shape_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_shape_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_0_shape_shape", slider=True, text="Shape")
         layout.prop(prop, "cld_0_shape_inverse", slider=True, text="Inflate")
-
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
-        grid.prop(prop, "cld_0_shape_offset", text="")
 class STRATUS_PT_cloud_layer_0_shape_detail_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
     bl_label = "Detail"
@@ -816,48 +905,93 @@ class STRATUS_PT_cloud_layer_0_shape_detail_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_0_enable
+        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_detail_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_0_detail_shape", slider=True, text="Shape")
         layout.prop(prop, "cld_0_detail_inverse", slider=True, text="Inflate")
-
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
-        grid.prop(prop, "cld_0_detail_offset", text="")
-
-class STRATUS_PT_cloud_layer_1(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_panel"
-    bl_label = "Cumulus Layer"
+class STRATUS_PT_cloud_layer_0_shape_offsets(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
+    bl_label = "Offsets"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
-    def draw_header(self, context):
-        self.layout.prop(context.scene.cloud_props, "cld_1_enable")
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        #layout.enabled = prop.cld_0_enable
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Detail")
+        grid.prop(prop, "cld_0_detail_offset", text="")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Shape")
+        grid.prop(prop, "cld_0_shape_offset", text="")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Coverage")
+        grid.prop(prop, "cld_0_coverage_offset", text="")
+
+class STRATUS_PT_cloud_layer_1(Panel):
+    bl_parent_id = "STRATUS_PT_main"
+    bl_label = "Cumulus Layer"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"HIDE_HEADER"}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        return main_prop.panels == "CUMU"
 
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
 
-        layout.enabled = prop.cld_1_enable
+        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_1_enable else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_1_enable else "RESTRICT_RENDER_ON"
+
+        render_options = layout.row(align=True)
+        render_options.label(text="Cumulus")
+        render_options.prop(prop, 'cld_1_enable', icon=icon_vp)
+        render_options.prop(prop, 'cld_1_enable', icon=icon_r)
+
+        #layout.enabled = prop.cld_1_enable
         layout.prop(prop, "scale_2")
         layout.prop(prop, "scale_3")
 class STRATUS_PT_cloud_layer_1_transform(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_1"
     bl_label = "Transform"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CUMU" or cloud_prop.cld_1_transform_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_1_transform_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_1_transform_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
@@ -872,34 +1006,60 @@ class STRATUS_PT_cloud_layer_1_transform(Panel):
         grid_2.label(text="Scale")
         grid_2.prop(prop, "cld_1_size", slider=True, text="")
 class STRATUS_PT_cloud_layer_1_density(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_1"
     bl_label = "Density"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CUMU" or cloud_prop.cld_1_density_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_1_density_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_1_density_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_density", slider=True)
         layout.prop(prop, "cld_1_density_height", slider=True)
 class STRATUS_PT_cloud_layer_1_light(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_1"
     bl_label = "Lighting"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CUMU" or cloud_prop.cld_1_light_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_1_light_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_1_light_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_sigma_s")
         layout.prop(prop, "cld_1_ap_intsty", slider=True)
@@ -907,27 +1067,39 @@ class STRATUS_PT_cloud_layer_1_light(Panel):
 
         grid = layout.grid_flow(columns=1, align=True)
         grid.label(text="Scattering")
-        grid.prop(prop, "cld_1_atten")
-        grid.prop(prop, "cld_1_contr")
-        grid.prop(prop, "cld_1_eccen")
+        grid.prop(prop, "cld_1_atten", slider=True)
+        grid.prop(prop, "cld_1_contr", slider=True)
+        grid.prop(prop, "cld_1_eccen", slider=True)
 class STRATUS_PT_cloud_layer_1_shape(Panel):
-    bl_parent_id = "STRATUS_PT_cloud_layer_1"
-    bl_label = "Shaping"
+    bl_label = "Shape"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
 
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        cloud_prop = scene.cloud_props
+        return (main_prop.panels == "CUMU" or cloud_prop.cld_1_shape_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.cloud_props
+        
+        the_icon = 'PINNED' if prop.cld_1_shape_pinned else 'UNPINNED'
+        self.layout.prop(prop, "cld_1_shape_pinned", text="", icon=the_icon)
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_bottom_roundness", slider=True)
-        layout.prop(prop, "cld_1_top_roundness", slider=True)
+        #layout.prop(prop, "cld_1_top_roundness", slider=True)
         layout.prop(prop, "cld_1_thickness", slider=True)
-        layout.prop(prop, "cld_1_curl_octaves", slider=True)
         
 class STRATUS_PT_cloud_layer_1_shape_coverage_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
@@ -941,14 +1113,11 @@ class STRATUS_PT_cloud_layer_1_shape_coverage_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
         
         layout.prop(prop, "cld_1_coverage_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_1_coverage_shape", slider=True, text="Shape")
-
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
-        grid.prop(prop, "cld_1_coverage_offset", text="")
+        layout.prop(prop, "cld_1_curl_octaves", slider=True, text="Curl")
 class STRATUS_PT_cloud_layer_1_shape_shape_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
     bl_label = "Shape"
@@ -961,13 +1130,9 @@ class STRATUS_PT_cloud_layer_1_shape_shape_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
         
         layout.prop(prop, "cld_1_shape_intsty", slider=True, text="Intensity")
-
-        grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
-        grid.prop(prop, "cld_1_shape_offset", text="")
 class STRATUS_PT_cloud_layer_1_shape_detail_noise(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
     bl_label = "Detail"
@@ -980,10 +1145,31 @@ class STRATUS_PT_cloud_layer_1_shape_detail_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        layout.enabled = prop.cld_1_enable
+        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_detail_intsty", slider=True, text="Intensity")
+class STRATUS_PT_cloud_layer_1_shape_offsets(Panel):
+    bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
+    bl_label = "Offsets"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.cloud_props
+        #layout.enabled = prop.cld_1_enable
 
         grid = layout.grid_flow(columns=1, align=True)
-        grid.label(text="Offset")
+        grid.label(text="Detail")
         grid.prop(prop, "cld_1_detail_offset", text="")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Shape")
+        grid.prop(prop, "cld_1_shape_offset", text="")
+
+        grid = layout.grid_flow(columns=1, align=True)
+        grid.label(text="Coverage")
+        grid.prop(prop, "cld_1_coverage_offset", text="")

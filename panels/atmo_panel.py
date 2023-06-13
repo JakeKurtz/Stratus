@@ -31,6 +31,7 @@ from bpy.types import (Panel,
                        )
 
 from .panel_utils import update_prop
+from .main_panel import (STRATUS_PT_main, STRATUS_main_Properties)
                        
 class STRATUS_AtmoProperties(PropertyGroup):
     prop_sky_altitude: FloatProperty(
@@ -83,12 +84,30 @@ class STRATUS_AtmoProperties(PropertyGroup):
         update=update_prop
         )
 
+    atmo_pinned: BoolProperty(
+        default=False
+    )
+
 class STRATUS_PT_atmo_panel(Panel):
     bl_label = "Atmosphere"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        prop = scene.atmo_props
+        return (main_prop.panels == "CELE" or prop.atmo_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.atmo_props
+        
+        the_icon = 'PINNED' if prop.atmo_pinned else 'UNPINNED'
+        self.layout.prop(prop, "atmo_pinned", text="", icon=the_icon)
 
     def draw(self, context):
         layout = self.layout

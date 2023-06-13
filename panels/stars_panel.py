@@ -32,6 +32,7 @@ from bpy.types import (Panel,
                        )
                        
 from .panel_utils import update_prop
+from .main_panel import (STRATUS_PT_main, STRATUS_main_Properties)
 
 class STRATUS_StarsProperties(PropertyGroup):
     stars_show_viewport: BoolProperty(
@@ -74,7 +75,7 @@ class STRATUS_StarsProperties(PropertyGroup):
         )
 
     stars_pole_elevation: FloatProperty(
-        name = "Celestial Pole Elevation",
+        name = "Elevation",
         description = "Celestial pole angle from horizon.",
         default = radians(90.0),
         subtype="ANGLE",
@@ -82,7 +83,7 @@ class STRATUS_StarsProperties(PropertyGroup):
         )
         
     stars_pole_rotation: FloatProperty(
-        name = "Celestial Pole Rotation",
+        name = "Rotation",
         description = "Rotation of celestial pole around zenith.",
         default = 0.0,
         subtype="ANGLE",
@@ -90,18 +91,36 @@ class STRATUS_StarsProperties(PropertyGroup):
         )
 
     stars_show_pole: BoolProperty(
-        name="Celestial Poles Visualizer",
-        description="Display celestial pole visualizer.",
+        name="Pole Visualizer",
+        description="Display pole visualizer.",
         default = False,
         update=update_prop
         )
 
-class STRATUS_PT_stars_panel(Panel):
+    stars_pinned: BoolProperty(
+        default=False
+    )
+
+class STRATUS_PT_stars(Panel):
     bl_label = "Stars"
     bl_category = "Stratus"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        main_prop = scene.main_props
+        prop = scene.stars_props
+        return (main_prop.panels == "CELE" or prop.stars_pinned)
+
+    def draw_header(self, context):
+        scene = context.scene
+        prop = scene.stars_props
+        
+        the_icon = 'PINNED' if prop.stars_pinned else 'UNPINNED'
+        self.layout.prop(prop, "stars_pinned", text="", icon=the_icon)
 
     def draw(self, context):
         layout = self.layout
@@ -119,11 +138,23 @@ class STRATUS_PT_stars_panel(Panel):
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.prop(prop, "stars_intsty")
 
-        layout.separator()
         grid_1 = layout.grid_flow(columns=1, align=True)
         grid_1.prop(prop, "stars_rotation")
 
-        layout.separator()
+
+class STRATUS_PT_stars_pole(Panel):
+    bl_parent_id = "STRATUS_PT_stars"
+    bl_label = "Pole"
+    bl_category = "Stratus"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        prop = scene.stars_props
+
         grid_2 = layout.grid_flow(columns=1, align=True)
         grid_2.prop(prop, "stars_show_pole")
         grid_2.prop(prop, "stars_pole_elevation")
