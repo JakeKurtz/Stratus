@@ -132,3 +132,17 @@ VIEWPORT_RUNNING = False
 
 global KILL_VIEWPORT
 KILL_VIEWPORT = False
+
+# ----------------------------------- Icons ---------------------------------- #
+
+global ICONS
+ICONS = None
+
+global CIRR_ICON
+CIRR_ICON = 0
+
+global CUMU_ICON
+CUMU_ICON = 0
+
+global CELE_ICON
+CELE_ICON = 0

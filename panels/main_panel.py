@@ -20,20 +20,24 @@
 import bpy
 from bpy.props import (BoolProperty, EnumProperty)            
 from bpy.types import (Panel, PropertyGroup,)
+from .. import globals
 
-class STRATUS_main_Properties(PropertyGroup):
-    enum_panels = [
-        ('CIRR','','Cirrus Properties','COLORSET_02_VEC', 0),
-        ('CUMU','','Cumulus Properties','COLORSET_04_VEC', 1), 
-        ('CELE','','Celestial Properties','COLORSET_05_VEC', 2),
+def enum_panels(self, context):
+    blah = [
+        ('CIRR','','Cirrus Properties', globals.CIRR_ICON, 0),
+        ('CUMU','','Cumulus Properties', globals.CUMU_ICON, 1), 
+        ('CELE','','Celestial Properties', globals.CELE_ICON, 2),
         ('REND','','Rendering Properties','SCENE', 3),
     ]
+    return blah
+
+class STRATUS_main_Properties(PropertyGroup):
 
     panels: EnumProperty(
-        name="Stuff",
+        name="Stratus",
         items=enum_panels,
         description="",
-        default="CIRR"
+        default=0
     )
 
 class STRATUS_PT_main(Panel):

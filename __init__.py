@@ -30,6 +30,10 @@ bl_info = {
 }
 
 import bpy
+import os
+import bpy.utils.previews
+
+from . import globals
 
 from .operators.render import STRATUS_OT_render_animation
 from .operators.bake import STRATUS_OT_bake_env_img
@@ -143,6 +147,20 @@ classes = (
     )
 
 def register():
+    
+    # ------------------------------- Custom Icons ------------------------------- #
+    globals.ICONS = bpy.utils.previews.new()
+    icons_dir = bpy.utils.user_resource('SCRIPTS', path='addons\Stratus' , create=False)
+
+    globals.ICONS.load("CELE_ICON", os.path.join(icons_dir, "icons\cele_icon.png"), 'IMAGE')
+    globals.ICONS.load("CUMU_ICON", os.path.join(icons_dir, "icons\cumu_icon.png"), 'IMAGE')
+    globals.ICONS.load("CIRR_ICON", os.path.join(icons_dir, "icons\cirr_icon.png"), 'IMAGE')
+
+    globals.CELE_ICON = globals.ICONS["CELE_ICON"].icon_id
+    globals.CUMU_ICON = globals.ICONS["CUMU_ICON"].icon_id
+    globals.CIRR_ICON = globals.ICONS["CIRR_ICON"].icon_id
+    # ---------------------------------------------------------------------------- #
+
     for cls in classes:
         bpy.utils.register_class(cls)
 
