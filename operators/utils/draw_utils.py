@@ -44,8 +44,6 @@ def sun_uniforms(shader):
     shader.uniform_float("sun_half_angular", prop.sun_size / 2.0)
     shader.uniform_float("sun.dir", compute_dir(prop.sun_elevation, prop.sun_rotation))
     shader.uniform_float("sun.intsty", prop.sun_intsty)
-    #shader.uniform_float("sun.silver_intsty", prop.sun_silver_intsty)
-    #shader.uniform_float("sun.silver_spread", prop.sun_silver_spread)
 
 def moon_uniforms(shader):
     moon_prop = bpy.context.scene.moon_props
@@ -107,8 +105,6 @@ def moon_uniforms(shader):
 
     shader.uniform_float("moon.dir", moon_dir)
     shader.uniform_float("moon.intsty", moon_prop.moon_intsty)
-    #shader.uniform_float("moon.silver_intsty", moon_prop.moon_silver_intsty)
-    #shader.uniform_float("moon.silver_spread", moon_prop.moon_silver_spread)
 
 def atmo_uniforms(shader):
     prop = bpy.context.scene.atmo_props
@@ -127,8 +123,6 @@ def cloud_uniforms(shader):
     cld_domain_center = Vector((0.0, 0.0, h-cld_domain_radius))
     cld_domain_thickness = 15000.0 # (m)
 
-    #shader.uniform_float("cld_G", prop.cld_G)
-
     cld_0_ap_intsty = 500000.0 * lerp(0.5, 0.04175, prop.cld_0_ap_intsty)
     cld_1_ap_intsty = 500000.0 * lerp(0.5, 0.04175, prop.cld_1_ap_intsty)
 
@@ -140,19 +134,15 @@ def cloud_uniforms(shader):
     # ---------------------------------------------------------------------------- #
 
     scale = lerp(0.1, 7.5, prop.cld_0_size);
-    detail_scale = prop.cld_1_noise_sizes[0]
-    shape_scale = prop.cld_1_noise_sizes[1] / scale;
-    coverage_scale = prop.cld_1_noise_sizes[2] / scale;
-    #detail_scale = 0.002 / scale;
-    #shape_scale = (0.0015 / scale) * 0.3;
-    #coverage_scale = 0.00003 / scale;
+
+    detail_scale = (0.0003 * prop.cld_0_detail_scale)
+    shape_scale = (0.00013 * prop.cld_0_shape_scale) / scale
+    coverage_scale = (0.00001 * prop.cld_0_shape_scale) / scale
 
     shell_thickness = 500.0 * scale;
 
     sigma_a = Vector((0.0, 0.0, 0.0))
     cld_0_sigma_t = max(Vector(prop.cld_0_sigma_s) + sigma_a, Vector((0.000000001,0.000000001,0.000000001)))
-
-    shader.uniform_bool("enable_cld_0",                 prop.cld_0_enable)
 
     shader.uniform_int("cloud_0.layer",                 0)
 
@@ -208,17 +198,14 @@ def cloud_uniforms(shader):
 
     scale = lerp(0.1, 7.5, prop.cld_1_size);
 
-    detail_scale = 0.0019#prop.cld_1_noise_sizes[0]                # 0.0019
-    shape_scale = 0.0015 / scale #prop.cld_1_noise_sizes[1] / scale;        # 0.0015
-    coverage_scale = 0.000035 / scale #prop.cld_1_noise_sizes[2] / scale;     # 0.000035
-    #coverage_scale = 0.000003 / scale;
+    detail_scale = (0.0019 * prop.cld_1_detail_scale)
+    shape_scale = (0.0015 * prop.cld_1_shape_scale) / scale
+    coverage_scale = (0.000035 * prop.cld_1_shape_scale) / scale
 
     shell_thickness = 1000 * scale;
 
     sigma_a = Vector((0.0, 0.0, 0.0))
     cld_1_sigma_t = max(Vector(prop.cld_1_sigma_s) + sigma_a, Vector((0.000000001,0.000000001,0.000000001)))
-
-    shader.uniform_bool("enable_cld_1",                 prop.cld_1_enable)
 
     shader.uniform_int("cloud_1.layer",                 1)
 
@@ -257,12 +244,6 @@ def cloud_uniforms(shader):
     shader.uniform_float("cloud_1.coverage_offset",     prop.cld_1_coverage_offset * 100.0)
     shader.uniform_float("cloud_1.shape_offset",        prop.cld_1_shape_offset * 100.0)
     shader.uniform_float("cloud_1.detail_offset",       prop.cld_1_detail_offset * 100.0)
-
-    #shader.uniform_float("scale_0",                     prop.scale_0)
-    #shader.uniform_float("scale_1",                     prop.scale_1)
-    #shader.uniform_int("scale_1",                       prop.scale_1)
-    #shader.uniform_float("scale_2",                     prop.scale_2)
-    shader.uniform_float("scale_3",                     prop.scale_3)
 
     cld_1_trans = Matrix.Translation(cld_domain_center + Vector((0,0,6360e3)))
     cld_1_rot = Matrix.Rotation(prop.cld_1_rotation, 4, 'Z')
@@ -348,7 +329,8 @@ def draw_env_img(env_img, irra_tex, render_context):
             cld_1_max_light_steps = render_prop.max_light_steps_viewport
 
         enable_atm = atmo_prop.atm_show_viewport
-        enable_cld = cloud_prop.cld_show_viewport
+        enable_cld_0 = cloud_prop.cld_0_show_viewport
+        enable_cld_1 = cloud_prop.cld_1_show_viewport
         enable_moon = moon_prop.moon_show_viewport
         enable_sun = sun_prop.sun_show_viewport
         enable_stars = stars_prop.stars_show_viewport
@@ -370,7 +352,8 @@ def draw_env_img(env_img, irra_tex, render_context):
             cld_1_max_light_steps = render_prop.max_light_steps_render
 
         enable_atm = atmo_prop.atm_show_render
-        enable_cld = cloud_prop.cld_show_render
+        enable_cld_0 = cloud_prop.cld_0_show_render
+        enable_cld_1 = cloud_prop.cld_1_show_render
         enable_moon = moon_prop.moon_show_render
         enable_sun = sun_prop.sun_show_render
         enable_stars = stars_prop.stars_show_render
@@ -401,10 +384,9 @@ def draw_env_img(env_img, irra_tex, render_context):
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
 
-        #_shader.uniform_bool("enable_bicubic", enable_bicubic)
-
         _shader.uniform_bool("enable_atm", enable_atm)
-        _shader.uniform_bool("enable_cld", enable_cld)
+        _shader.uniform_bool("enable_cld_0", enable_cld_0)
+        _shader.uniform_bool("enable_cld_1", enable_cld_1)
         _shader.uniform_bool("enable_moon", enable_moon)
         _shader.uniform_bool("enable_sun", enable_sun)
         _shader.uniform_bool("enable_stars", enable_stars)
@@ -483,10 +465,9 @@ def pre_draw_viewport(self, context, irra_tex):
 
         _shader.uniform_float("altitude", atmo_prop.prop_sky_altitude)
 
-        #_shader.uniform_bool("enable_bicubic", False)
-
         _shader.uniform_bool("enable_atm", atmo_prop.atm_show_viewport)
-        _shader.uniform_bool("enable_cld", cloud_prop.cld_show_viewport)
+        _shader.uniform_bool("enable_cld_0", cloud_prop.cld_0_show_viewport)
+        _shader.uniform_bool("enable_cld_1", cloud_prop.cld_1_show_viewport)
         _shader.uniform_bool("enable_moon", moon_prop.moon_show_viewport)
         _shader.uniform_bool("enable_sun", sun_prop.sun_show_viewport)
         _shader.uniform_bool("enable_stars", stars_prop.stars_show_viewport)

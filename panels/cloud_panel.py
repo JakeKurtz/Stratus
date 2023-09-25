@@ -105,9 +105,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )    
 
-    cld_0_enable: BoolProperty(
+    cld_0_show_viewport: BoolProperty(
         name="",
-        description="Enable cirro cloud layer.",
+        description="Display cirro cloud layer in viewport.",
+        default = True,
+        update=update_prop
+    )
+
+    cld_0_show_render: BoolProperty(
+        name="",
+        description="Display cirro cloud layer in render.",
         default = True,
         update=update_prop
     )
@@ -348,7 +355,34 @@ class STRATUS_CloudProperties(PropertyGroup):
         default=(0,0),
         step = 1,
         update=update_prop
-        ) 
+        )
+
+    cld_0_coverage_scale: FloatProperty(
+        name = "Coverage Noise Scale",
+        description = "The scale of the coverage noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
+        update=update_prop
+        )
+
+    cld_0_shape_scale: FloatProperty(
+        name = "Shape Noise Scale",
+        description = "The scale of the shape noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
+        update=update_prop
+        )
+
+    cld_0_detail_scale: FloatProperty(
+        name = "Detail Noise Scale",
+        description = "The scale of the detail noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
+        update=update_prop
+        )
 
 # ------------------------- Cloud Layer 1 Properties ------------------------- #
 
@@ -379,9 +413,16 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         )    
 
-    cld_1_enable: BoolProperty(
+    cld_1_show_viewport: BoolProperty(
         name="",
-        description="Enable cumulus cloud layer.",
+        description="Display cumulus cloud layer in viewport.",
+        default = True,
+        update=update_prop
+    )
+
+    cld_1_show_render: BoolProperty(
+        name="",
+        description="Display cumulus cloud layer in render.",
         default = True,
         update=update_prop
     )
@@ -588,45 +629,32 @@ class STRATUS_CloudProperties(PropertyGroup):
         update=update_prop
         ) 
 
-    scale_0: FloatProperty(
-        name = "scale_0",
-        description = "",
-        default = 0.35,
+    cld_1_coverage_scale: FloatProperty(
+        name = "Coverage Noise Scale",
+        description = "The scale of the coverage noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
         update=update_prop
         )
 
-    scale_1: FloatProperty(
-        name = "scale_1",
-        description = "",
-        default = 0.35,
+    cld_1_shape_scale: FloatProperty(
+        name = "Shape Noise Scale",
+        description = "The scale of the shape noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
         update=update_prop
         )
-    '''
-    scale_1: IntProperty(
-        name = "scale_1",
-        description = "",
-        default = 1,
-        min = 1,
-        max = 16,
+
+    cld_1_detail_scale: FloatProperty(
+        name = "Detail Noise Scale",
+        description = "The scale of the detail noise texture.",
+        default = 1.0,
+        max = 10.0,
+        min = 0.001,
         update=update_prop
         )
-    '''
-    scale_2: FloatProperty(
-        name = "scale_2",
-        description = "",
-        default = 0.8,
-        min = 0.0,
-        max = 1000000.0,
-        update=update_prop
-        )      
-        
-    scale_3: FloatProperty(
-        name = "scale_3",
-        description = "",
-        default = 0.0,
-        min = 0.0,
-        update=update_prop
-        )  
 
     sigma_s: FloatVectorProperty(
         name = "sigma_s",
@@ -663,28 +691,6 @@ class STRATUS_CloudProperties(PropertyGroup):
         default=False
     )
 
-'''
-class STRATUS_PT_cloud_panel(Panel):
-    bl_label = "Clouds"
-    bl_category = "Stratus"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_options = {"DEFAULT_CLOSED"}
-    
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        prop = scene.cloud_props
-        
-        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_show_viewport else "RESTRICT_VIEW_ON"
-        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_show_render else "RESTRICT_RENDER_ON"
-
-        render_options = layout.row(align=True)
-        render_options.label(text="Clouds")
-        render_options.prop(prop, 'cld_show_viewport', icon=icon_vp)
-        render_options.prop(prop, 'cld_show_render', icon=icon_r)
-'''
-
 class STRATUS_PT_cloud_layer_0(Panel):
     bl_parent_id = "STRATUS_PT_main"
     bl_label = "Cirro Layer"
@@ -704,22 +710,14 @@ class STRATUS_PT_cloud_layer_0(Panel):
         scene = context.scene
         prop = scene.cloud_props
 
-        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_0_enable else "RESTRICT_VIEW_ON"
-        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_0_enable else "RESTRICT_RENDER_ON"
+        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_0_show_viewport else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_0_show_render else "RESTRICT_RENDER_ON"
 
         render_options = layout.row(align=True)
         render_options.label(text="Cirro")
-        render_options.prop(prop, 'cld_0_enable', icon=icon_vp)
-        render_options.prop(prop, 'cld_0_enable', icon=icon_r)
+        render_options.prop(prop, 'cld_0_show_viewport', icon=icon_vp)
+        render_options.prop(prop, 'cld_0_show_render', icon=icon_r)
 
-        #layout.enabled = prop.cld_0_enable
-
-        layout.prop(prop, "cld_1_noise_sizes")
-
-        layout.prop(prop, "scale_0")
-        layout.prop(prop, "scale_1")
-        layout.prop(prop, "scale_2")
-        layout.prop(prop, "scale_3")
 class STRATUS_PT_cloud_layer_0_transform(Panel):
     bl_label = "Transform"
     bl_category = "Stratus"
@@ -746,8 +744,6 @@ class STRATUS_PT_cloud_layer_0_transform(Panel):
         scene = context.scene
         prop = scene.cloud_props
         main_prop = scene.main_props
-
-        #layout.enabled = prop.cld_0_enable
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
@@ -786,7 +782,6 @@ class STRATUS_PT_cloud_layer_0_density(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_density", slider=True)
         layout.prop(prop, "cld_0_density_height", slider=True)
@@ -815,7 +810,6 @@ class STRATUS_PT_cloud_layer_0_light(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_sigma_s")
         layout.prop(prop, "cld_0_ap_intsty", slider=True)
@@ -851,7 +845,6 @@ class STRATUS_PT_cloud_layer_0_shape(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_bottom_roundness", slider=True)
         #layout.prop(prop, "cld_0_top_roundness", slider=True)
@@ -869,7 +862,6 @@ class STRATUS_PT_cloud_layer_0_shape_coverage_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         box = layout.box()
 
@@ -888,7 +880,6 @@ class STRATUS_PT_cloud_layer_0_shape_shape_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_shape_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_0_shape_shape", slider=True, text="Shape")
@@ -905,11 +896,11 @@ class STRATUS_PT_cloud_layer_0_shape_detail_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         layout.prop(prop, "cld_0_detail_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_0_detail_shape", slider=True, text="Shape")
         layout.prop(prop, "cld_0_detail_inverse", slider=True, text="Inflate")
+        layout.prop(prop, "cld_0_detail_scale", text="Texture Scale")
 class STRATUS_PT_cloud_layer_0_shape_offsets(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_0_shape"
     bl_label = "Offsets"
@@ -922,7 +913,6 @@ class STRATUS_PT_cloud_layer_0_shape_offsets(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_0_enable
 
         grid = layout.grid_flow(columns=1, align=True)
         grid.label(text="Detail")
@@ -955,17 +945,14 @@ class STRATUS_PT_cloud_layer_1(Panel):
         scene = context.scene
         prop = scene.cloud_props
 
-        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_1_enable else "RESTRICT_VIEW_ON"
-        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_1_enable else "RESTRICT_RENDER_ON"
+        icon_vp = 'RESTRICT_VIEW_OFF' if prop.cld_1_show_viewport else "RESTRICT_VIEW_ON"
+        icon_r = 'RESTRICT_RENDER_OFF' if prop.cld_1_show_render else "RESTRICT_RENDER_ON"
 
         render_options = layout.row(align=True)
         render_options.label(text="Cumulus")
-        render_options.prop(prop, 'cld_1_enable', icon=icon_vp)
-        render_options.prop(prop, 'cld_1_enable', icon=icon_r)
+        render_options.prop(prop, 'cld_1_show_viewport', icon=icon_vp)
+        render_options.prop(prop, 'cld_1_show_render', icon=icon_r)
 
-        #layout.enabled = prop.cld_1_enable
-        layout.prop(prop, "scale_2")
-        layout.prop(prop, "scale_3")
 class STRATUS_PT_cloud_layer_1_transform(Panel):
     bl_label = "Transform"
     bl_category = "Stratus"
@@ -991,7 +978,6 @@ class STRATUS_PT_cloud_layer_1_transform(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
 
         grid_0 = layout.grid_flow(columns=1, align=True)
         grid_0.label(text="Location")
@@ -1030,7 +1016,6 @@ class STRATUS_PT_cloud_layer_1_density(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_density", slider=True)
         layout.prop(prop, "cld_1_density_height", slider=True)
@@ -1059,7 +1044,6 @@ class STRATUS_PT_cloud_layer_1_light(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_sigma_s")
         layout.prop(prop, "cld_1_ap_intsty", slider=True)
@@ -1113,7 +1097,6 @@ class STRATUS_PT_cloud_layer_1_shape_coverage_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
         
         layout.prop(prop, "cld_1_coverage_intsty", slider=True, text="Intensity")
         layout.prop(prop, "cld_1_coverage_shape", slider=True, text="Shape")
@@ -1130,7 +1113,6 @@ class STRATUS_PT_cloud_layer_1_shape_shape_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
         
         layout.prop(prop, "cld_1_shape_intsty", slider=True, text="Intensity")
 class STRATUS_PT_cloud_layer_1_shape_detail_noise(Panel):
@@ -1145,9 +1127,9 @@ class STRATUS_PT_cloud_layer_1_shape_detail_noise(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
 
         layout.prop(prop, "cld_1_detail_intsty", slider=True, text="Intensity")
+        layout.prop(prop, "cld_1_detail_scale", text="Texture Scale")
 class STRATUS_PT_cloud_layer_1_shape_offsets(Panel):
     bl_parent_id = "STRATUS_PT_cloud_layer_1_shape"
     bl_label = "Offsets"
@@ -1160,7 +1142,6 @@ class STRATUS_PT_cloud_layer_1_shape_offsets(Panel):
         layout = self.layout
         scene = context.scene
         prop = scene.cloud_props
-        #layout.enabled = prop.cld_1_enable
 
         grid = layout.grid_flow(columns=1, align=True)
         grid.label(text="Detail")

@@ -541,7 +541,6 @@ uniform vec3 pole_dir;
 #define RATIO 3.066257e-22       // (STELLAR_RADIUS^2 * SIGMA) / LIGHT_YEAR^2
 /* --------------------------------- Clouds --------------------------------- */
 
-uniform bool enable_cld;
 uniform bool enable_cld_0;
 uniform bool enable_cld_1;
 
@@ -624,10 +623,10 @@ struct Cloud {
 uniform Cloud cloud_0;
 uniform Cloud cloud_1;
 
-uniform float scale_0;
-uniform float scale_1;
-uniform float scale_2;
-uniform float scale_3;
+//uniform float scale_0;
+//uniform float scale_1;
+//uniform float scale_2;
+//uniform float scale_3;
 
 //uniform vec3 sigma_s;
 //const vec3 sigma_a = vec3(0.0);
@@ -1181,7 +1180,7 @@ bool cld_sample(
 
         /* -------------------------------------------------------------------------- */
 
-        float coverage_area = texture(noise_tex_2D_2048, (pos_curl.xy + cloud.pos_offset) * scale_3).y * cloud.coverage_intsty;
+        float coverage_area = texture(noise_tex_2D_2048, (pos_curl.xy + cloud.pos_offset) * 0.000001).y * cloud.coverage_intsty;
         //float coverage_area = texture(noise_tex_2D_2048, (pos.xy + cloud.coverage_offset) * 0.000001).y * cloud.coverage_intsty;
         float CN = mix(cns.x, cns.y, cloud.coverage_shape);
         float wh = CN * cloud.thickness;
@@ -1521,7 +1520,7 @@ void main()
 
     precise vec4 sky_color = vec4(0.0);
     
-    if (enable_cld) {
+    if (enable_cld_0 || enable_cld_1) {
 
         vec4 cld_0_color = vec4(0.0);
         vec4 cld_1_color = vec4(0.0);
