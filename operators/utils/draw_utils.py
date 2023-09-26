@@ -137,7 +137,7 @@ def cloud_uniforms(shader):
 
     detail_scale = (0.0003 * prop.cld_0_detail_scale)
     shape_scale = (0.00013 * prop.cld_0_shape_scale) / scale
-    coverage_scale = (0.00001 * prop.cld_0_shape_scale) / scale
+    coverage_scale = (0.00001 * prop.cld_0_coverage_scale) / scale
 
     shell_thickness = 500.0 * scale;
 
@@ -200,7 +200,7 @@ def cloud_uniforms(shader):
 
     detail_scale = (0.0019 * prop.cld_1_detail_scale)
     shape_scale = (0.0015 * prop.cld_1_shape_scale) / scale
-    coverage_scale = (0.000035 * prop.cld_1_shape_scale) / scale
+    coverage_scale = (0.000035 * prop.cld_1_coverage_scale) / scale
 
     shell_thickness = 1000 * scale;
 

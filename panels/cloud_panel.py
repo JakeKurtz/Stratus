@@ -78,15 +78,6 @@ class STRATUS_CloudProperties(PropertyGroup):
 
 # ------------------------- Cloud Layer 0 Properties ------------------------- #
 
-    cld_0_noise_sizes: FloatVectorProperty(
-        name = "cld_0_noise_scale",
-        description="",
-        size = 3,
-        step = 0.01,
-        default=(1,1,1),
-        update=update_prop
-        )
-
     cld_0_top_roundness: FloatProperty(
         name = "cld_0_top_roundness",
         description = "",
@@ -97,7 +88,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         )      
 
     cld_0_bottom_roundness: FloatProperty(
-        name = "cld_1_bottom_roundness",
+        name = "Bottom Roundness",
         description = "",
         default = 0.2,
         max = 1.0,
@@ -385,15 +376,6 @@ class STRATUS_CloudProperties(PropertyGroup):
         )
 
 # ------------------------- Cloud Layer 1 Properties ------------------------- #
-
-    cld_1_noise_sizes: FloatVectorProperty(
-        name = "cld_1_noise_scale",
-        description="",
-        size = 3,
-        step = 0.01,
-        default=(1,1,1),
-        update=update_prop
-        )
   
     cld_1_top_roundness: FloatProperty(
         name = "cld_1_top_roundness",
@@ -405,7 +387,7 @@ class STRATUS_CloudProperties(PropertyGroup):
         )        
         
     cld_1_bottom_roundness: FloatProperty(
-        name = "cld_1_bottom_roundness",
+        name = "Bottom Roundness",
         description = "",
         default = 0.2,
         max = 1.0,

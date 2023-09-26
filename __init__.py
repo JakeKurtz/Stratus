@@ -23,7 +23,7 @@ bl_info = {
     "author": "Jake Kurtz",
     'license': 'GPL-3.0-only',
     "version": (1, 1, 0),
-    "blender": (3, 4, 1),
+    "blender": (3, 6, 1),
     'location': 'View3D > Sidebar > Stratus Tab',
     "doc_url": "https://jakekurtz.ca",
     "category": "Rendering"
@@ -40,6 +40,7 @@ from .operators.bake import STRATUS_OT_bake_env_img
 from .operators.bake_seq import STRATUS_OT_bake_seq
 from .operators.viewport_editor import STRATUS_OT_viewport_editor, STRATUS_OT_kill_viewport_editor
 from .operators.prop_observer import STRATUS_OT_prop_observer
+from .operators.presets import (STRATUS_OT_daytime_1, STRATUS_OT_daytime_2, STRATUS_OT_daytime_3, STRATUS_OT_sunset_1, STRATUS_OT_sunset_2, STRATUS_OT_sunset_3, STRATUS_OT_storm, STRATUS_OT_alien, STRATUS_OT_hell, STRATUS_OT_full_moon, STRATUS_OT_blood_moon)
 
 from .panels.main_panel import (
     STRATUS_main_Properties,
@@ -93,6 +94,9 @@ from .panels.render_panel import (
     STRATUS_PT_render_output,
     STRATUS_PT_viewport,
     STRATUS_PT_viewport_steps)
+from .panels.presets_panel import (
+    STRATUS_PT_presets
+)
 
 classes = (
     STRATUS_main_Properties,
@@ -109,6 +113,18 @@ classes = (
     STRATUS_OT_viewport_editor,
     STRATUS_OT_kill_viewport_editor, 
     STRATUS_OT_prop_observer,
+
+    STRATUS_OT_daytime_1,
+    STRATUS_OT_daytime_2,
+    STRATUS_OT_daytime_3,
+    STRATUS_OT_sunset_1,
+    STRATUS_OT_sunset_2,
+    STRATUS_OT_sunset_3,
+    STRATUS_OT_storm,
+    STRATUS_OT_alien,
+    STRATUS_OT_hell,
+    STRATUS_OT_full_moon,
+    STRATUS_OT_blood_moon,
 
     STRATUS_PT_main,
 
@@ -144,7 +160,9 @@ classes = (
     STRATUS_PT_viewport_steps,
     STRATUS_PT_render,
     STRATUS_PT_render_performance,
-    STRATUS_PT_render_output
+    STRATUS_PT_render_output,
+
+    STRATUS_PT_presets
     )
 
 def register():

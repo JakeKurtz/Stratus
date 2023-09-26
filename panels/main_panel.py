@@ -28,6 +28,7 @@ def enum_panels(self, context):
         ('CUMU','','Cumulus Properties', globals.CUMU_ICON, 1), 
         ('CELE','','Celestial Properties', globals.CELE_ICON, 2),
         ('REND','','Rendering Properties','SCENE', 3),
+        ('PRES','','Presets','SEQ_PREVIEW', 4),
     ]
     return blah
 

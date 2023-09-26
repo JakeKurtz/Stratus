@@ -90,7 +90,7 @@ class STRATUS_OT_render_animation (bpy.types.Operator):
             self._env_img = ENVImage(globals.IMG_NAME)
             self._env_img.set_size(size)
             
-            # Initialize, if you havent already
+            # Initialize, if you haven't already
             init_textures(self)
             init_shaders(self)
             init_world_node_tree(self)
