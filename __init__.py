@@ -78,8 +78,9 @@ from .panels.sun_panel import (
     STRATUS_PT_sun_panel)
 from .panels.stars_panel import (
     STRATUS_StarsProperties,
-    STRATUS_PT_stars,
-    STRATUS_PT_stars_pole)
+    STRATUS_PT_stars)
+    #STRATUS_PT_stars,
+    #STRATUS_PT_stars_pole)
 from .panels.moon_panel import (
     STRATUS_MoonProperties,
     STRATUS_PT_moon,
@@ -134,7 +135,7 @@ classes = (
     STRATUS_PT_atmo_panel,
     STRATUS_PT_sun_panel,
     STRATUS_PT_stars,
-    STRATUS_PT_stars_pole,
+    #STRATUS_PT_stars_pole,
     STRATUS_PT_moon,
     STRATUS_PT_moon_phase,
 
