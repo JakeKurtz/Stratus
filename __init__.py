@@ -22,7 +22,7 @@ bl_info = {
     "description": "Generates HDRIs with realistic skys.",
     "author": "Jake Kurtz",
     'license': 'GPL-3.0-only',
-    "version": (1, 1, 0),
+    "version": (1, 5, 3),
     "blender": (3, 6, 1),
     'location': 'View3D > Sidebar > Stratus Tab',
     "doc_url": "https://jakekurtz.ca",
