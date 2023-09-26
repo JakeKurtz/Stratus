@@ -38,10 +38,8 @@ class STRATUS_PT_presets(Panel):
 
         layout.operator(STRATUS_OT_daytime_1.bl_idname, text=STRATUS_OT_daytime_1.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_daytime_2.bl_idname, text=STRATUS_OT_daytime_2.bl_label, icon="NONE")
-        layout.operator(STRATUS_OT_daytime_3.bl_idname, text=STRATUS_OT_daytime_3.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_sunset_1.bl_idname, text=STRATUS_OT_sunset_1.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_sunset_2.bl_idname, text=STRATUS_OT_sunset_2.bl_label, icon="NONE")
-        layout.operator(STRATUS_OT_sunset_3.bl_idname, text=STRATUS_OT_sunset_3.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_storm.bl_idname, text=STRATUS_OT_storm.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_alien.bl_idname, text=STRATUS_OT_alien.bl_label, icon="NONE")
         layout.operator(STRATUS_OT_hell.bl_idname, text=STRATUS_OT_hell.bl_label, icon="NONE")

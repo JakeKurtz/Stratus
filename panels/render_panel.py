@@ -94,7 +94,7 @@ class STRATUS_RenderProperties(PropertyGroup):
     env_img_render_size: EnumProperty(
         items=globals.ENV_IMG_SIZE,
         description="(1024 x 512) * size",
-        default="1",
+        default="4",
         update=update_env_img_size
     )
 
@@ -237,7 +237,7 @@ class STRATUS_RenderProperties(PropertyGroup):
         name = "Tile Size",
         items=globals.TILE_SIZE,
         description="Tile Size",
-        default="2"
+        default="3"
     )
 
     file_path: StringProperty(
@@ -336,7 +336,7 @@ class STRATUS_PT_render(Panel):
 
         layout.separator()
 
-        layout.prop(prop, "enable_bicubic")
+        #layout.prop(prop, "enable_bicubic")
 class STRATUS_PT_render_performance(Panel):
     bl_parent_id = "STRATUS_PT_render"
     bl_label = "Performance"
